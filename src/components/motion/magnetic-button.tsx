@@ -9,15 +9,19 @@ interface MagneticButtonProps extends HTMLMotionProps<"button"> {
   children: ReactNode;
   /** Maximum pixel offset the button can be pulled — keep this small (spec: "do not allow excessive movement"). */
   strength?: number;
+  as?: "button" | "a";
+  href?: string;
 }
 
 export function MagneticButton({
   children,
   className,
   strength = 10,
+  as = "button",
+  href,
   ...props
 }: MagneticButtonProps) {
-  const ref = useRef<HTMLButtonElement>(null);
+  const ref = useRef<HTMLElement>(null);
   const reduceMotion = useReducedMotion();
 
   const x = useMotionValue(0);
@@ -25,7 +29,7 @@ export function MagneticButton({
   const springX = useSpring(x, motionTokens.spring.responsive);
   const springY = useSpring(y, motionTokens.spring.responsive);
 
-  function handlePointerMove(e: React.PointerEvent<HTMLButtonElement>) {
+  function handlePointerMove(e: React.PointerEvent<HTMLElement>) {
     if (reduceMotion || !ref.current) return;
     const rect = ref.current.getBoundingClientRect();
     const relX = e.clientX - (rect.left + rect.width / 2);
@@ -39,12 +43,15 @@ export function MagneticButton({
     y.set(0);
   }
 
+  const MotionElement = (as === "a" ? motion.a : motion.button) as typeof motion.button;
+
   return (
-    <motion.button
+    <MotionElement
       ref={ref}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
       style={reduceMotion ? undefined : { x: springX, y: springY }}
+      href={href}
       whileTap={{ scale: 0.96 }}
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-md bg-ember px-6 py-3 text-sm font-medium text-void transition-colors hover:bg-ember-glow",
@@ -53,6 +60,6 @@ export function MagneticButton({
       {...props}
     >
       {children}
-    </motion.button>
+    </MotionElement>
   );
 }

@@ -104,9 +104,7 @@ function Hero() {
           transition={{ duration: 0.6, delay: 2.7 }}
           className="mt-10 flex items-center gap-4"
         >
-          <Link href="/signup" data-cursor="ENTER">
-            <MagneticButton>Enter the Lab</MagneticButton>
-          </Link>
+          <MagneticButton as="a" href="/signup" data-cursor="ENTER">Enter the Lab</MagneticButton>
           <Link
             href="/tracks"
             data-cursor="VIEW"
@@ -186,7 +184,7 @@ export default function LandingPage() {
         <div className="mx-auto mt-10 grid max-w-5xl gap-5 md:grid-cols-3">
           {LANGUAGE_TRACKS.map((track, i) => (
             <Reveal key={track.name} delay={i * 0.1}>
-              <Link href="/select-language" data-cursor="SELECT">
+              <Link href={`/select-language?language=${track.name.toLowerCase()}`} data-cursor="SELECT">
                 <TiltCard
                   className={`group relative overflow-hidden rounded-md border bg-surface p-8 ${track.accent}`}
                 >

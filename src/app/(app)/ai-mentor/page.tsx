@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Send, MessageSquareCode } from "lucide-react";
 import { ThinkingIndicator } from "@/components/motion/loading-state";
@@ -11,6 +11,11 @@ export default function AiMentorPage() {
   const [messages, setMessages] = useState(AI_MENTOR_TRANSCRIPT);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [messages, thinking]);
 
   function send() {
     if (!input.trim()) return;
@@ -41,7 +46,7 @@ export default function AiMentorPage() {
         </div>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto py-4">
+      <div className="flex-1 space-y-3 overflow-y-auto py-4" aria-live="polite">
         <AnimatePresence initial={false}>
           {messages.map((m, i) => {
             if (m.role === "system") {
@@ -80,23 +85,26 @@ export default function AiMentorPage() {
             </div>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
-      <div className="flex items-center gap-2 border-t border-hairline pt-4">
+      <form className="flex items-center gap-2 border-t border-hairline pt-4" onSubmit={(event) => { event.preventDefault(); send(); }}>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && send()}
+          aria-label="Message the AI mentor"
           placeholder="Ask the mentor…"
           className="flex-1 rounded-md border border-hairline bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-text-faint focus:outline-none focus:border-ember"
         />
         <button
-          onClick={send}
+          type="submit"
+          disabled={!input.trim() || thinking}
+          aria-label="Send message"
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-ember text-void hover:bg-ember-glow"
         >
           <Send className="h-4 w-4" />
         </button>
-      </div>
+      </form>
     </div>
   );
 }

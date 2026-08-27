@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import {
   Home,
@@ -21,6 +21,8 @@ import {
   Settings,
   ChevronsLeft,
   ChevronDown,
+  Menu,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/cn";
 
@@ -89,13 +91,35 @@ export function Sidebar() {
     Progress: false,
   });
 
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setMobileOpen(false);
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, []);
+
   return (
-    <aside
-      className={cn(
-        "flex h-screen flex-col border-r border-hairline bg-surface transition-[width] duration-200",
-        collapsed ? "w-16" : "w-64"
-      )}
-    >
+    <>
+      <button
+        type="button"
+        aria-label="Open navigation"
+        aria-expanded={mobileOpen}
+        onClick={() => setMobileOpen(true)}
+        className="fixed left-4 top-3 z-40 rounded border border-hairline bg-surface p-2 text-text md:hidden"
+      >
+        <Menu className="h-4 w-4" />
+      </button>
+      {mobileOpen && <button aria-label="Close navigation" className="fixed inset-0 z-40 bg-void/70 md:hidden" onClick={() => setMobileOpen(false)} />}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex h-screen flex-col border-r border-hairline bg-surface transition-transform duration-200 md:relative md:z-auto md:translate-x-0",
+          collapsed ? "w-16" : "w-64",
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
       <div className="flex h-14 items-center justify-between border-b border-hairline px-4">
         {!collapsed && (
           <span className="font-display text-sm font-semibold tracking-[0.2em] text-text">
@@ -103,10 +127,12 @@ export function Sidebar() {
           </span>
         )}
         <button
+          type="button"
           onClick={() => setCollapsed((c) => !c)}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           className="rounded p-1.5 text-text-muted hover:bg-elevated hover:text-text"
         >
+          <span className="md:hidden"><X className="h-4 w-4" /></span>
           <ChevronsLeft
             className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")}
           />
@@ -150,6 +176,7 @@ export function Sidebar() {
                             )}
                             <a
                               href={child.href}
+                              onClick={() => setMobileOpen(false)}
                               className={cn(
                                 "flex items-center gap-2.5 rounded px-2.5 py-1.5 text-sm",
                                 active
@@ -177,6 +204,7 @@ export function Sidebar() {
                       )}
                       <a
                         href={item.href}
+                        onClick={() => setMobileOpen(false)}
                         className={cn(
                           "flex items-center gap-3 rounded px-2.5 py-2 text-sm",
                           active
@@ -199,12 +227,14 @@ export function Sidebar() {
       <div className="border-t border-hairline p-2">
         <a
           href="/settings"
+          onClick={() => setMobileOpen(false)}
           className="flex items-center gap-3 rounded px-2.5 py-2 text-sm text-text-muted hover:bg-elevated hover:text-text"
         >
           <Settings className="h-4 w-4 shrink-0" />
           {!collapsed && "Settings"}
         </a>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

@@ -41,6 +41,7 @@ interface PlacedNode {
 }
 
 export default function SystemDesignPage() {
+  const canvasRef = useRef<HTMLDivElement>(null);
   const [placed, setPlaced] = useState<PlacedNode[]>([
     { id: "n1", type: "load_balancer", x: 80, y: 60 },
     { id: "n2", type: "api", x: 260, y: 60 },
@@ -65,7 +66,7 @@ export default function SystemDesignPage() {
   }
 
   return (
-    <div className="mx-auto flex max-w-5xl gap-6">
+    <div className="mx-auto flex max-w-5xl flex-col gap-6 lg:flex-row">
       <div className="flex-1">
         <Reveal>
           <p className="font-mono text-xs uppercase tracking-widest text-ember">
@@ -77,7 +78,7 @@ export default function SystemDesignPage() {
         </Reveal>
 
         <Reveal delay={0.1} className="mt-6">
-          <div className="relative h-[420px] overflow-hidden rounded-md border border-hairline bg-surface">
+          <div ref={canvasRef} className="relative h-[min(420px,65vh)] min-h-[320px] overflow-hidden rounded-md border border-hairline bg-surface">
             <div className="pointer-events-none absolute inset-0 bg-grid-pattern bg-grid opacity-30" />
             {placed.map((node) => {
               const item = PALETTE.find((p) => p.type === node.type)!;
@@ -87,19 +88,26 @@ export default function SystemDesignPage() {
                   drag
                   dragMomentum={false}
                   dragElastic={0.1}
+                  dragConstraints={canvasRef}
                   initial={{ x: node.x, y: node.y, opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   whileDrag={{ scale: 1.05, zIndex: 10 }}
                   onDragEnd={(_, info) => {
+                    const bounds = canvasRef.current?.getBoundingClientRect();
+                    const maxX = Math.max(0, (bounds?.width ?? 500) - 112);
+                    const maxY = Math.max(0, (bounds?.height ?? 420) - 72);
                     const updated = placed.map((n) =>
                       n.id === node.id
-                        ? { ...n, x: n.x + info.offset.x, y: n.y + info.offset.y }
+                        ? { ...n, x: Math.max(0, Math.min(maxX, n.x + info.offset.x)), y: Math.max(0, Math.min(maxY, n.y + info.offset.y)) }
                         : n
                     );
                     setPlaced(updated);
                     checkArchitecture(updated);
                   }}
                   onClick={() => setSelected(node.id)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Select ${item.label}`}
                   className="absolute flex w-28 cursor-grab flex-col items-center gap-1.5 rounded-md border bg-elevated px-2 py-3 active:cursor-grabbing"
                   style={{
                     borderColor: selected === node.id ? "#FF6A39" : "#26262B",
@@ -124,11 +132,11 @@ export default function SystemDesignPage() {
         )}
       </div>
 
-      <div className="w-56 shrink-0">
+      <div className="w-full shrink-0 lg:w-56">
         <p className="font-mono text-[10px] uppercase tracking-wide text-text-faint">
           Components
         </p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
           {PALETTE.map((item) => (
             <button
               key={item.type}

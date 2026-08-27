@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 
@@ -14,6 +14,11 @@ const LANGUAGES = [
 export default function SelectLanguagePage() {
   const [selected, setSelected] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryLanguage = searchParams.get("language");
+  const selectedLanguage = LANGUAGES.some((item) => item.id === queryLanguage)
+    ? queryLanguage
+    : selected;
 
   return (
     <div>
@@ -29,10 +34,12 @@ export default function SelectLanguagePage() {
         {LANGUAGES.map((lang) => (
           <button
             key={lang.id}
+            type="button"
+            aria-pressed={selectedLanguage === lang.id}
             onClick={() => setSelected(lang.id)}
             className={cn(
               "rounded-md border bg-surface px-4 py-3.5 text-left transition-colors",
-              selected === lang.id
+              selectedLanguage === lang.id
                 ? "border-ember bg-ember/[0.04]"
                 : "border-hairline hover:border-text-faint"
             )}
@@ -45,9 +52,9 @@ export default function SelectLanguagePage() {
 
       <Button
         variant="primary"
-        disabled={!selected}
+        disabled={!selectedLanguage}
         className="mt-6 w-full justify-center"
-        onClick={() => router.push("/onboarding")}
+        onClick={() => router.push(`/onboarding?language=${selectedLanguage}`)}
       >
         Continue
       </Button>

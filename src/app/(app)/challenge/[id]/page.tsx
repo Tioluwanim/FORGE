@@ -6,7 +6,7 @@ import { Play, RotateCcw, Save } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CodeEditor } from "@/components/lab/code-editor";
+import { CodeEditor, filenameForLanguage } from "@/components/lab/code-editor";
 import { MentorPanel } from "@/components/lab/mentor-panel";
 import { TestResultsPanel, type TestResult } from "@/components/lab/test-result-row";
 import { LoadingState } from "@/components/motion/loading-state";
@@ -24,6 +24,7 @@ export default function ChallengePage({
   const [code, setCode] = useState(challenge?.starter ?? "");
   const [results, setResults] = useState<TestResult[] | null>(null);
   const [running, setRunning] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   if (!challenge) notFound();
 
@@ -43,6 +44,12 @@ export default function ChallengePage({
     }, 900);
   }
 
+  function resetCode() {
+    setCode(challenge.starter);
+    setResults(null);
+    setSaved(false);
+  }
+
   return (
     <div className="-m-8 flex h-[calc(100vh-3.5rem)] flex-col">
       {/* Challenge header */}
@@ -55,10 +62,10 @@ export default function ChallengePage({
         </div>
         <div className="flex items-center gap-2">
           <Badge tone="neutral">{challenge.difficulty}</Badge>
-          <Button variant="ghost" size="sm">
+          <Button variant="ghost" size="sm" onClick={resetCode} disabled={running}>
             <RotateCcw className="h-3.5 w-3.5" /> Reset
           </Button>
-          <Button variant="secondary" size="sm">
+          <Button variant="secondary" size="sm" onClick={() => setSaved(true)} disabled={running}>
             <Save className="h-3.5 w-3.5" /> Save
           </Button>
           <Button variant="primary" size="sm" onClick={runTests} disabled={running}>
@@ -82,7 +89,7 @@ export default function ChallengePage({
         {/* Editor + terminal */}
         <div className="flex flex-col overflow-hidden border-r border-hairline">
           <div className="flex-1 overflow-hidden p-3">
-            <CodeEditor value={code} onChange={setCode} filename="solution.py" />
+            <CodeEditor value={code} onChange={(value) => { setCode(value); setSaved(false); }} filename={filenameForLanguage(challenge.language)} />
           </div>
           <div className="h-64 overflow-y-auto border-t border-hairline p-3">
             <AnimatePresence mode="wait">
@@ -114,6 +121,8 @@ export default function ChallengePage({
         {/* AI Mentor */}
         <MentorPanel hints={challenge.hints} />
       </div>
+
+      {saved && <p className="border-t border-hairline px-6 py-2 text-xs text-signal-pass" role="status">Draft saved in this demo session.</p>}
 
       <AnimatePresence>
         {results && results.every((r) => r.passed) && (

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 
@@ -27,12 +28,18 @@ export default function OnboardingPage() {
   const [skill, setSkill] = useState<string | null>(null);
   const [goal, setGoal] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const language = searchParams.get("language");
+
+  useEffect(() => {
+    if (!language) router.replace("/select-language");
+  }, [language, router]);
 
   if (step === "skill") {
     return (
       <div>
         <p className="font-mono text-xs uppercase tracking-widest text-ember">Step 2 of 3</p>
-        <h1 className="mt-2 font-display text-2xl font-medium text-text">Where are you?</h1>
+        <h1 className="mt-2 font-display text-2xl font-medium text-text">Where are you with {language ?? "your language"}?</h1>
         <p className="mt-1.5 text-sm text-text-muted">
           Be honest — this sets your starting point, not a ceiling.
         </p>
@@ -97,7 +104,7 @@ export default function OnboardingPage() {
         variant="primary"
         disabled={!goal}
         className="mt-6 w-full justify-center"
-        onClick={() => router.push("/dashboard")}
+          onClick={() => router.push(`/dashboard?language=${language ?? "python"}`)}
       >
         Build my roadmap
       </Button>

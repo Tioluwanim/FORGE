@@ -2,7 +2,8 @@
 
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Float, Sparkles, Text } from "@react-three/drei";
-import { createElement } from "react";
+import { createElement, useRef } from "react";
+import type { Group, Mesh } from "three";
 
 const FRAGMENTS = [
   { text: "async def retry():", position: [-3.2, 1.4, -2] as [number, number, number] },
@@ -35,17 +36,18 @@ function CodeFragment({
 }
 
 function ForgeCore() {
-  useFrame(({ clock, camera, scene }) => {
+  const coreRef = useRef<Group>(null);
+  const pulseRef = useRef<Mesh>(null);
+
+  useFrame(({ clock, camera }) => {
     const elapsed = clock.getElapsedTime();
-    const core = scene.getObjectByName("forge-core");
-    const pulse = scene.getObjectByName("forge-pulse");
-    if (core) {
-      core.rotation.z = elapsed * 0.12;
-      core.rotation.y = elapsed * 0.2;
+    if (coreRef.current) {
+      coreRef.current.rotation.z = elapsed * 0.12;
+      coreRef.current.rotation.y = elapsed * 0.2;
     }
-    if (pulse) {
+    if (pulseRef.current) {
       const scale = 1 + Math.sin(elapsed * 2.2) * 0.08;
-      pulse.scale.setScalar(scale);
+      pulseRef.current.scale.setScalar(scale);
     }
     camera.position.x += (Math.sin(elapsed * 0.18) * 0.16 - camera.position.x) * 0.02;
     camera.position.y += (Math.cos(elapsed * 0.15) * 0.1 - camera.position.y) * 0.02;
@@ -54,7 +56,8 @@ function ForgeCore() {
 
   return createElement(
     "group",
-    { name: "forge-core" },
+    // eslint-disable-next-line react-hooks/refs
+    { ref: coreRef },
     createElement(
       "mesh",
       { rotation: [Math.PI / 2, 0, 0] },
@@ -69,7 +72,8 @@ function ForgeCore() {
     ),
     createElement(
       "mesh",
-      { name: "forge-pulse" },
+      // eslint-disable-next-line react-hooks/refs
+      { ref: pulseRef },
       createElement("icosahedronGeometry", { args: [0.32, 2] }),
       createElement("meshStandardMaterial", {
         color: "#FF6A39",
@@ -90,10 +94,11 @@ function ForgeCore() {
 
 function OrbitingShard({ index }: { index: number }) {
   const angle = (index / 6) * Math.PI * 2;
+  const shardRef = useRef<Group>(null);
 
-  useFrame(({ clock, scene }) => {
+  useFrame(({ clock }) => {
     const elapsed = clock.getElapsedTime() * 0.35 + angle;
-    const shard = scene.getObjectByName(`forge-shard-${index}`);
+    const shard = shardRef.current;
     if (!shard) return;
     shard.position.set(
       Math.cos(elapsed) * 2.05,
@@ -106,7 +111,8 @@ function OrbitingShard({ index }: { index: number }) {
 
   return createElement(
     "group",
-    { name: `forge-shard-${index}` },
+    // eslint-disable-next-line react-hooks/refs
+    { ref: shardRef },
     createElement(
       "mesh",
       null,
