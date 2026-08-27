@@ -26,7 +26,10 @@ export default function ChallengePage({
   const [running, setRunning] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  if (!challenge) return notFound();
+  if (!challenge) {
+    notFound();
+    return null;
+  }
 
   function runTests() {
     setRunning(true);

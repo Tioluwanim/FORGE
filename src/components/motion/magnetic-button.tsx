@@ -51,7 +51,7 @@ export function MagneticButton({
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
       style={reduceMotion ? undefined : { x: springX, y: springY }}
-      href={href}
+      {...(as === "a" && href ? { href } : {})}
       whileTap={{ scale: 0.96 }}
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-md bg-ember px-6 py-3 text-sm font-medium text-void transition-colors hover:bg-ember-glow",
