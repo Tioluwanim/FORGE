@@ -18,31 +18,58 @@ export default function ChallengePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const challenge = CHALLENGES.find((c) => c.id === id);
+  const foundChallenge = CHALLENGES.find((c) => c.id === id);
   const router = useRouter();
 
-  const [code, setCode] = useState(challenge?.starter ?? "");
+  if (!foundChallenge) {
+    notFound();
+  }
+
+  // From this point onward, TypeScript knows this is defined.
+  const challenge = foundChallenge;
+
+  const [code, setCode] = useState(challenge.starter);
   const [results, setResults] = useState<TestResult[] | null>(null);
   const [running, setRunning] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  if (!challenge) {
-    notFound();
-    return null;
-  }
-
   function runTests() {
     setRunning(true);
+
     // Simulated execution — real implementation enqueues to the sandbox
     // worker per forge-architecture-plan.md §7 and polls for results.
     setTimeout(() => {
       setResults([
-        { name: "Succeeds on first attempt", passed: true, durationMs: 4 },
-        { name: "Retries after failure", passed: code.includes("except"), durationMs: 11 },
-        { name: "Doubles delay each retry", passed: code.includes("*= 2") || code.includes("* 2"), durationMs: 9 },
-        { name: "Gives up after max_attempts", passed: false, durationMs: 6, message: "Expected RuntimeError after 3 attempts, coroutine still retrying" },
-        { name: "Hidden edge case", passed: false, hidden: true },
+        {
+          name: "Succeeds on first attempt",
+          passed: true,
+          durationMs: 4,
+        },
+        {
+          name: "Retries after failure",
+          passed: code.includes("except"),
+          durationMs: 11,
+        },
+        {
+          name: "Doubles delay each retry",
+          passed:
+            code.includes("*= 2") || code.includes("* 2"),
+          durationMs: 9,
+        },
+        {
+          name: "Gives up after max_attempts",
+          passed: false,
+          durationMs: 6,
+          message:
+            "Expected RuntimeError after 3 attempts, coroutine still retrying",
+        },
+        {
+          name: "Hidden edge case",
+          passed: false,
+          hidden: true,
+        },
       ]);
+
       setRunning(false);
     }, 900);
   }
@@ -61,18 +88,45 @@ export default function ChallengePage({
           <p className="font-mono text-xs uppercase tracking-widest text-ember">
             {challenge.concept}
           </p>
-          <h1 className="font-display text-lg text-text">{challenge.title}</h1>
+
+          <h1 className="font-display text-lg text-text">
+            {challenge.title}
+          </h1>
         </div>
+
         <div className="flex items-center gap-2">
-          <Badge tone="neutral">{challenge.difficulty}</Badge>
-          <Button variant="ghost" size="sm" onClick={resetCode} disabled={running}>
-            <RotateCcw className="h-3.5 w-3.5" /> Reset
+          <Badge tone="neutral">
+            {challenge.difficulty}
+          </Badge>
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={resetCode}
+            disabled={running}
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Reset
           </Button>
-          <Button variant="secondary" size="sm" onClick={() => setSaved(true)} disabled={running}>
-            <Save className="h-3.5 w-3.5" /> Save
+
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setSaved(true)}
+            disabled={running}
+          >
+            <Save className="h-3.5 w-3.5" />
+            Save
           </Button>
-          <Button variant="primary" size="sm" onClick={runTests} disabled={running}>
-            <Play className="h-3.5 w-3.5" /> {running ? "Running…" : "Run tests"}
+
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={runTests}
+            disabled={running}
+          >
+            <Play className="h-3.5 w-3.5" />
+            {running ? "Running…" : "Run tests"}
           </Button>
         </div>
       </div>
@@ -84,6 +138,7 @@ export default function ChallengePage({
           <p className="font-mono text-[10px] uppercase tracking-wide text-text-faint">
             Requirements
           </p>
+
           <p className="mt-2 text-sm leading-relaxed text-text-muted">
             {challenge.description}
           </p>
@@ -92,12 +147,23 @@ export default function ChallengePage({
         {/* Editor + terminal */}
         <div className="flex flex-col overflow-hidden border-r border-hairline">
           <div className="flex-1 overflow-hidden p-3">
-            <CodeEditor value={code} onChange={(value) => { setCode(value); setSaved(false); }} filename={filenameForLanguage(challenge.language)} />
+            <CodeEditor
+              value={code}
+              onChange={(value) => {
+                setCode(value);
+                setSaved(false);
+              }}
+              filename={filenameForLanguage(challenge.language)}
+            />
           </div>
+
           <div className="h-64 overflow-y-auto border-t border-hairline p-3">
             <AnimatePresence mode="wait">
               {running ? (
-                <motion.div key="running" exit={{ opacity: 0 }}>
+                <motion.div
+                  key="running"
+                  exit={{ opacity: 0 }}
+                >
                   <LoadingState context="tests" />
                 </motion.div>
               ) : results ? (
@@ -125,7 +191,14 @@ export default function ChallengePage({
         <MentorPanel hints={challenge.hints} />
       </div>
 
-      {saved && <p className="border-t border-hairline px-6 py-2 text-xs text-signal-pass" role="status">Draft saved in this demo session.</p>}
+      {saved && (
+        <p
+          className="border-t border-hairline px-6 py-2 text-xs text-signal-pass"
+          role="status"
+        >
+          Draft saved in this demo session.
+        </p>
+      )}
 
       <AnimatePresence>
         {results && results.every((r) => r.passed) && (
@@ -136,8 +209,17 @@ export default function ChallengePage({
             className="overflow-hidden border-t border-hairline bg-signal-pass/[0.06]"
           >
             <div className="flex items-center justify-between px-6 py-3">
-              <span className="text-sm text-text">All tests passed.</span>
-              <Button variant="primary" size="sm" onClick={() => router.push(`/challenge/${id}/results`)}>
+              <span className="text-sm text-text">
+                All tests passed.
+              </span>
+
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() =>
+                  router.push(`/challenge/${id}/results`)
+                }
+              >
                 View results →
               </Button>
             </div>
