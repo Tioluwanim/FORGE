@@ -37,12 +37,17 @@ function CodeFragment({
 
 function ForgeCore() {
   const core = useRef<Group>(null);
+  const pulse = useRef<Group>(null);
 
   useFrame(({ clock, camera }) => {
     const elapsed = clock.getElapsedTime();
     if (core.current) {
       core.current.rotation.z = elapsed * 0.12;
       core.current.rotation.y = elapsed * 0.2;
+    }
+    if (pulse.current) {
+      const scale = 1 + Math.sin(elapsed * 2.2) * 0.08;
+      pulse.current.scale.setScalar(scale);
     }
     camera.position.x += (Math.sin(elapsed * 0.18) * 0.16 - camera.position.x) * 0.02;
     camera.position.y += (Math.cos(elapsed * 0.15) * 0.1 - camera.position.y) * 0.02;
@@ -66,7 +71,7 @@ function ForgeCore() {
     ),
     createElement(
       "mesh",
-      null,
+      { ref: pulse },
       createElement("icosahedronGeometry", { args: [0.32, 2] }),
       createElement("meshStandardMaterial", {
         color: "#FF6A39",
@@ -75,7 +80,41 @@ function ForgeCore() {
         roughness: 0.25,
       })
     ),
-    createElement("pointLight", { color: "#FF6A39", intensity: 2.5, distance: 5 })
+    createElement("pointLight", { color: "#FF6A39", intensity: 2.5, distance: 5 }),
+    createElement(
+      "mesh",
+      { rotation: [Math.PI / 4, Math.PI / 4, 0] },
+      createElement("boxGeometry", { args: [2.1, 2.1, 2.1] }),
+      createElement("meshBasicMaterial", { color: "#FF6A39", wireframe: true, transparent: true, opacity: 0.08 })
+    )
+  );
+}
+
+function OrbitingShard({ index }: { index: number }) {
+  const shard = useRef<Group>(null);
+  const angle = (index / 6) * Math.PI * 2;
+
+  useFrame(({ clock }) => {
+    const elapsed = clock.getElapsedTime() * 0.35 + angle;
+    if (!shard.current) return;
+    shard.current.position.set(
+      Math.cos(elapsed) * 2.05,
+      Math.sin(elapsed * 1.15) * 0.7,
+      Math.sin(elapsed) * 0.8 - 0.8
+    );
+    shard.current.rotation.x = elapsed * 1.4;
+    shard.current.rotation.y = elapsed * 1.1;
+  });
+
+  return createElement(
+    "group",
+    { ref: shard },
+    createElement(
+      "mesh",
+      null,
+      createElement("octahedronGeometry", { args: [0.06, 0] }),
+      createElement("meshBasicMaterial", { color: index % 2 ? "#FBBF24" : "#FF6A39" })
+    )
   );
 }
 
@@ -93,6 +132,7 @@ export function HeroScene() {
     >
       {createElement("ambientLight", { intensity: 0.4 })}
       <ForgeCore />
+      {Array.from({ length: 6 }, (_, index) => <OrbitingShard key={index} index={index} />)}
       <Sparkles count={110} scale={[8, 5, 4]} size={2} speed={0.3} color="#FF6A39" opacity={0.55} />
       <Sparkles count={35} scale={[5, 3, 3]} size={4} speed={0.15} color="#FBBF24" opacity={0.3} />
       {FRAGMENTS.map((f) => (
