@@ -2,8 +2,7 @@
 
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Float, Sparkles, Text } from "@react-three/drei";
-import { createElement, useRef } from "react";
-import type { Group } from "three";
+import { createElement } from "react";
 
 const FRAGMENTS = [
   { text: "async def retry():", position: [-3.2, 1.4, -2] as [number, number, number] },
@@ -36,18 +35,17 @@ function CodeFragment({
 }
 
 function ForgeCore() {
-  const core = useRef<Group>(null);
-  const pulse = useRef<Group>(null);
-
-  useFrame(({ clock, camera }) => {
+  useFrame(({ clock, camera, scene }) => {
     const elapsed = clock.getElapsedTime();
-    if (core.current) {
-      core.current.rotation.z = elapsed * 0.12;
-      core.current.rotation.y = elapsed * 0.2;
+    const core = scene.getObjectByName("forge-core");
+    const pulse = scene.getObjectByName("forge-pulse");
+    if (core) {
+      core.rotation.z = elapsed * 0.12;
+      core.rotation.y = elapsed * 0.2;
     }
-    if (pulse.current) {
+    if (pulse) {
       const scale = 1 + Math.sin(elapsed * 2.2) * 0.08;
-      pulse.current.scale.setScalar(scale);
+      pulse.scale.setScalar(scale);
     }
     camera.position.x += (Math.sin(elapsed * 0.18) * 0.16 - camera.position.x) * 0.02;
     camera.position.y += (Math.cos(elapsed * 0.15) * 0.1 - camera.position.y) * 0.02;
@@ -56,7 +54,7 @@ function ForgeCore() {
 
   return createElement(
     "group",
-    { ref: core },
+    { name: "forge-core" },
     createElement(
       "mesh",
       { rotation: [Math.PI / 2, 0, 0] },
@@ -71,7 +69,7 @@ function ForgeCore() {
     ),
     createElement(
       "mesh",
-      { ref: pulse },
+      { name: "forge-pulse" },
       createElement("icosahedronGeometry", { args: [0.32, 2] }),
       createElement("meshStandardMaterial", {
         color: "#FF6A39",
@@ -91,24 +89,24 @@ function ForgeCore() {
 }
 
 function OrbitingShard({ index }: { index: number }) {
-  const shard = useRef<Group>(null);
   const angle = (index / 6) * Math.PI * 2;
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, scene }) => {
     const elapsed = clock.getElapsedTime() * 0.35 + angle;
-    if (!shard.current) return;
-    shard.current.position.set(
+    const shard = scene.getObjectByName(`forge-shard-${index}`);
+    if (!shard) return;
+    shard.position.set(
       Math.cos(elapsed) * 2.05,
       Math.sin(elapsed * 1.15) * 0.7,
       Math.sin(elapsed) * 0.8 - 0.8
     );
-    shard.current.rotation.x = elapsed * 1.4;
-    shard.current.rotation.y = elapsed * 1.1;
+    shard.rotation.x = elapsed * 1.4;
+    shard.rotation.y = elapsed * 1.1;
   });
 
   return createElement(
     "group",
-    { ref: shard },
+    { name: `forge-shard-${index}` },
     createElement(
       "mesh",
       null,

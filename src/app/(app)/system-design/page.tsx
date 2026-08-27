@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { motion } from "motion/react";
 import {
   Server,
@@ -47,9 +47,10 @@ export default function SystemDesignPage() {
   ]);
   const [selected, setSelected] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const nextNodeId = useRef(3);
 
   function addNode(type: string) {
-    const id = `n${Date.now()}`;
+    const id = `n${nextNodeId.current++}`;
     setPlaced((p) => [...p, { id, type, x: 100 + p.length * 30, y: 180 }]);
   }
 

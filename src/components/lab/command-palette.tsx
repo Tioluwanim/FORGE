@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   Map,
   Dumbbell,
@@ -22,17 +23,18 @@ interface Command {
 }
 
 function useCommands(): Command[] {
+  const router = useRouter();
   return useMemo(
     () => [
-      { id: "roadmap", label: "Go to roadmap", group: "Navigate", icon: Map, run: () => (window.location.href = "/roadmap") },
-      { id: "practice", label: "Start today's practice", group: "Actions", icon: Dumbbell, run: () => (window.location.href = "/practice") },
-      { id: "mentor", label: "Open AI mentor", group: "Navigate", icon: MessageSquareCode, run: () => (window.location.href = "/ai-mentor") },
-      { id: "docs", label: "Search documentation", group: "Navigate", icon: FileText, run: () => (window.location.href = "/documentation") },
+      { id: "roadmap", label: "Go to roadmap", group: "Navigate", icon: Map, run: () => router.push("/roadmap") },
+      { id: "practice", label: "Start today's practice", group: "Actions", icon: Dumbbell, run: () => router.push("/practice") },
+      { id: "mentor", label: "Open AI mentor", group: "Navigate", icon: MessageSquareCode, run: () => router.push("/ai-mentor") },
+      { id: "docs", label: "Search documentation", group: "Navigate", icon: FileText, run: () => router.push("/documentation") },
       { id: "run", label: "Run current challenge", group: "Actions", icon: Play, run: () => {} },
-      { id: "project", label: "Open project", group: "Navigate", icon: FolderGit2, run: () => (window.location.href = "/projects") },
-      { id: "review", label: "Review weak areas", group: "Actions", icon: AlertTriangle, run: () => (window.location.href = "/reviews") },
+      { id: "project", label: "Open project", group: "Navigate", icon: FolderGit2, run: () => router.push("/projects") },
+      { id: "review", label: "Review weak areas", group: "Actions", icon: AlertTriangle, run: () => router.push("/reviews") },
     ],
-    []
+    [router]
   );
 }
 

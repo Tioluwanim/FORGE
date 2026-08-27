@@ -46,11 +46,11 @@ export function ParticleField({
     () =>
       Array.from({ length: count }, (_, i) => ({
         id: i,
-        x: Math.random() * 100,
-        y: Math.random() * 100,
-        size: Math.random() * 2 + 1,
-        duration: Math.random() * 8 + 10,
-        delay: Math.random() * 4,
+        x: (i * 47.3) % 100,
+        y: (i * 71.9) % 100,
+        size: ((i * 1.7) % 2) + 1,
+        duration: ((i * 3.1) % 8) + 10,
+        delay: (i * 1.3) % 4,
       })),
     [count]
   );

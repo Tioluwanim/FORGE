@@ -21,7 +21,7 @@ export function CustomCursor() {
   useEffect(() => {
     const isTouch = window.matchMedia("(pointer: coarse)").matches;
     if (isTouch || reduceMotion) return;
-    setEnabled(true);
+    const enableFrame = window.requestAnimationFrame(() => setEnabled(true));
 
     function handleMove(e: PointerEvent) {
       x.set(e.clientX);
@@ -32,7 +32,10 @@ export function CustomCursor() {
     }
 
     window.addEventListener("pointermove", handleMove);
-    return () => window.removeEventListener("pointermove", handleMove);
+    return () => {
+      window.cancelAnimationFrame(enableFrame);
+      window.removeEventListener("pointermove", handleMove);
+    };
   }, [reduceMotion, x, y]);
 
   if (!enabled) return null;

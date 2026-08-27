@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ScrollProgress } from "@/components/motion/scroll-progress";
 import { CustomCursor } from "@/components/motion/cursor";
 import { SmoothScrollProvider } from "@/components/motion/smooth-scroll-provider";
+import { CinematicShell } from "@/components/motion/cinematic-shell";
 
 const NAV_LINKS = [
   { label: "Method", href: "/method" },
@@ -19,8 +20,9 @@ export default function MarketingLayout({
     <SmoothScrollProvider>
       <ScrollProgress />
       <CustomCursor />
-      <div className="flex min-h-screen flex-col">
-        <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-hairline bg-void/80 px-8 backdrop-blur-sm">
+      <CinematicShell>
+        <div className="flex min-h-screen flex-col">
+          <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-hairline bg-void/80 px-8 backdrop-blur-sm">
           <Link
             href="/"
             data-cursor="HOME"
@@ -55,11 +57,11 @@ export default function MarketingLayout({
               Enter the Lab
             </Link>
           </div>
-        </header>
+          </header>
 
-        <main className="flex-1">{children}</main>
+          <main className="flex-1">{children}</main>
 
-        <footer className="border-t border-hairline px-8 py-10">
+          <footer className="border-t border-hairline px-8 py-10">
           <div className="mx-auto flex max-w-6xl flex-col gap-6 md:flex-row md:items-center md:justify-between">
             <span className="font-display text-sm tracking-[0.25em] text-text-faint">
               FORGE
@@ -82,8 +84,9 @@ export default function MarketingLayout({
               &copy; {new Date().getFullYear()} FORGE
             </span>
           </div>
-        </footer>
-      </div>
+          </footer>
+        </div>
+      </CinematicShell>
     </SmoothScrollProvider>
   );
 }
