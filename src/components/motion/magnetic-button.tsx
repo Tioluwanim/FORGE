@@ -47,7 +47,7 @@ export function MagneticButton({
 
   return (
     <MotionElement
-      ref={ref}
+      ref={ref as React.Ref<HTMLButtonElement>}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}
       style={reduceMotion ? undefined : { x: springX, y: springY }}
