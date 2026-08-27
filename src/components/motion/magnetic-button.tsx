@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, type ReactNode, type ButtonHTMLAttributes } from "react";
-import { motion, useMotionValue, useSpring, useReducedMotion } from "motion/react";
+import { useRef, type ReactNode } from "react";
+import { motion, useMotionValue, useSpring, useReducedMotion, type HTMLMotionProps } from "motion/react";
 import { cn } from "@/lib/cn";
 import { motionTokens } from "@/lib/motion-tokens";
 
-interface MagneticButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface MagneticButtonProps extends HTMLMotionProps<"button"> {
   children: ReactNode;
   /** Maximum pixel offset the button can be pulled — keep this small (spec: "do not allow excessive movement"). */
   strength?: number;
