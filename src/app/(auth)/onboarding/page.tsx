@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 
@@ -23,23 +22,32 @@ const GOALS = [
   "Professional Upskilling",
 ];
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const [step, setStep] = useState<"skill" | "goal">("skill");
   const [skill, setSkill] = useState<string | null>(null);
   const [goal, setGoal] = useState<string | null>(null);
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const language = searchParams.get("language");
 
   useEffect(() => {
-    if (!language) router.replace("/select-language");
+    if (!language) {
+      router.replace("/select-language");
+    }
   }, [language, router]);
 
   if (step === "skill") {
     return (
       <div>
-        <p className="font-mono text-xs uppercase tracking-widest text-ember">Step 2 of 3</p>
-        <h1 className="mt-2 font-display text-2xl font-medium text-text">Where are you with {language ?? "your language"}?</h1>
+        <p className="font-mono text-xs uppercase tracking-widest text-ember">
+          Step 2 of 3
+        </p>
+
+        <h1 className="mt-2 font-display text-2xl font-medium text-text">
+          Where are you with {language ?? "your language"}?
+        </h1>
+
         <p className="mt-1.5 text-sm text-text-muted">
           Be honest — this sets your starting point, not a ceiling.
         </p>
@@ -48,6 +56,7 @@ export default function OnboardingPage() {
           {SKILL_LEVELS.map((level) => (
             <button
               key={level}
+              type="button"
               onClick={() => setSkill(level)}
               className={cn(
                 "rounded-md border px-4 py-3 text-left text-sm transition-colors",
@@ -75,10 +84,14 @@ export default function OnboardingPage() {
 
   return (
     <div>
-      <p className="font-mono text-xs uppercase tracking-widest text-ember">Step 3 of 3</p>
+      <p className="font-mono text-xs uppercase tracking-widest text-ember">
+        Step 3 of 3
+      </p>
+
       <h1 className="mt-2 font-display text-2xl font-medium text-text">
         What are you trying to become?
       </h1>
+
       <p className="mt-1.5 text-sm text-text-muted">
         We&rsquo;ll build your roadmap around this.
       </p>
@@ -87,6 +100,7 @@ export default function OnboardingPage() {
         {GOALS.map((g) => (
           <button
             key={g}
+            type="button"
             onClick={() => setGoal(g)}
             className={cn(
               "rounded-md border px-3 py-3 text-left text-sm transition-colors",
@@ -104,10 +118,20 @@ export default function OnboardingPage() {
         variant="primary"
         disabled={!goal}
         className="mt-6 w-full justify-center"
-          onClick={() => router.push(`/dashboard?language=${language ?? "python"}`)}
+        onClick={() =>
+          router.push(`/dashboard?language=${language ?? "python"}`)
+        }
       >
         Build my roadmap
       </Button>
     </div>
+  );
+}
+
+export default function OnboardingPage() {
+  return (
+    <Suspense fallback={null}>
+      <OnboardingContent />
+    </Suspense>
   );
 }
