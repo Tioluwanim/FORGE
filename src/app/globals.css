@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+}
+
+* {
+  border-color: theme("colors.hairline");
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: theme("colors.void");
+  color: theme("colors.text.DEFAULT");
+  font-family: var(--font-body);
+  background-image:
+    linear-gradient(#ffffff08 1px, transparent 1px),
+    linear-gradient(90deg, #ffffff08 1px, transparent 1px);
+  background-size: 40px 40px;
+  background-position: center;
+}
+
+/* Visible keyboard focus everywhere — never sacrificed for cinematic effects */
+:focus-visible {
+  outline: 2px solid theme("colors.ember.DEFAULT");
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background-color: theme("colors.ember.DEFAULT" / 30%);
+  color: theme("colors.text.DEFAULT");
+}
+
+/* The forge seam — the one signature motion element. Reused for active/progress
+   states only: sidebar active item, primary button hover, mastery ring arc,
+   loading bars. Never used as ambient decoration. */
+.forge-seam {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    theme("colors.ember.DEFAULT") 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: seam-sweep 2.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* thin, consistent scrollbars fit the technical tone */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: theme("colors.hairline");
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: theme("colors.text.faint");
+}
