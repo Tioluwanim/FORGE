@@ -5,7 +5,11 @@ import { motion, useMotionValue, useSpring, useReducedMotion } from "motion/reac
 import { cn } from "@/lib/cn";
 import { motionTokens } from "@/lib/motion-tokens";
 
-interface MagneticButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface MagneticButtonProps
+  extends Omit<
+    ButtonHTMLAttributes<HTMLButtonElement>,
+    "onDrag" | "onDragStart" | "onDragEnd" | "onAnimationStart" | "onAnimationEnd"
+  > {
   children: ReactNode;
   /** Maximum pixel offset the button can be pulled — keep this small (spec: "do not allow excessive movement"). */
   strength?: number;
