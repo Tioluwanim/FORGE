@@ -1,16 +1,18 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
+import { tracksApi } from "@/lib/api";
+import { ApiError } from "@/lib/api-client";
 
 const SKILL_LEVELS = [
-  "Complete beginner",
-  "I know the language",
-  "I can build small applications",
-  "I build APIs",
-  "I'm already working professionally",
+  { label: "Complete beginner", value: "beginner" },
+  { label: "I know the language", value: "know_language" },
+  { label: "I can build small applications", value: "small_apps" },
+  { label: "I build APIs", value: "builds_apis" },
+  { label: "I'm already working professionally", value: "professional" },
 ];
 
 const GOALS = [
@@ -22,32 +24,38 @@ const GOALS = [
   "Professional Upskilling",
 ];
 
-function OnboardingContent() {
+export default function OnboardingPage() {
   const [step, setStep] = useState<"skill" | "goal">("skill");
   const [skill, setSkill] = useState<string | null>(null);
   const [goal, setGoal] = useState<string | null>(null);
-
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const language = searchParams.get("language");
 
-  useEffect(() => {
-    if (!language) {
-      router.replace("/select-language");
+  async function finish() {
+    const language = sessionStorage.getItem("forge_selected_language");
+    if (!language || !skill) {
+      setError("Missing language selection — go back and pick one.");
+      return;
     }
-  }, [language, router]);
+    setSubmitting(true);
+    setError(null);
+    try {
+      await tracksApi.create(language, skill, true);
+      sessionStorage.removeItem("forge_selected_language");
+      router.push("/dashboard");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Couldn't create your track. Try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
 
   if (step === "skill") {
     return (
       <div>
-        <p className="font-mono text-xs uppercase tracking-widest text-ember">
-          Step 2 of 3
-        </p>
-
-        <h1 className="mt-2 font-display text-2xl font-medium text-text">
-          Where are you with {language ?? "your language"}?
-        </h1>
-
+        <p className="font-mono text-xs uppercase tracking-widest text-ember">Step 2 of 3</p>
+        <h1 className="mt-2 font-display text-2xl font-medium text-text">Where are you?</h1>
         <p className="mt-1.5 text-sm text-text-muted">
           Be honest — this sets your starting point, not a ceiling.
         </p>
@@ -55,17 +63,16 @@ function OnboardingContent() {
         <div className="mt-6 flex flex-col gap-2">
           {SKILL_LEVELS.map((level) => (
             <button
-              key={level}
-              type="button"
-              onClick={() => setSkill(level)}
+              key={level.value}
+              onClick={() => setSkill(level.value)}
               className={cn(
                 "rounded-md border px-4 py-3 text-left text-sm transition-colors",
-                skill === level
+                skill === level.value
                   ? "border-ember bg-ember/[0.04] text-text"
                   : "border-hairline bg-surface text-text-muted hover:border-text-faint"
               )}
             >
-              {level}
+              {level.label}
             </button>
           ))}
         </div>
@@ -84,14 +91,10 @@ function OnboardingContent() {
 
   return (
     <div>
-      <p className="font-mono text-xs uppercase tracking-widest text-ember">
-        Step 3 of 3
-      </p>
-
+      <p className="font-mono text-xs uppercase tracking-widest text-ember">Step 3 of 3</p>
       <h1 className="mt-2 font-display text-2xl font-medium text-text">
         What are you trying to become?
       </h1>
-
       <p className="mt-1.5 text-sm text-text-muted">
         We&rsquo;ll build your roadmap around this.
       </p>
@@ -100,7 +103,6 @@ function OnboardingContent() {
         {GOALS.map((g) => (
           <button
             key={g}
-            type="button"
             onClick={() => setGoal(g)}
             className={cn(
               "rounded-md border px-3 py-3 text-left text-sm transition-colors",
@@ -114,24 +116,16 @@ function OnboardingContent() {
         ))}
       </div>
 
+      {error && <p className="mt-3 text-xs text-signal-fail">{error}</p>}
+
       <Button
         variant="primary"
-        disabled={!goal}
+        disabled={!goal || submitting}
         className="mt-6 w-full justify-center"
-        onClick={() =>
-          router.push(`/dashboard?language=${language ?? "python"}`)
-        }
+        onClick={finish}
       >
-        Build my roadmap
+        {submitting ? "Setting things up…" : "Build my roadmap"}
       </Button>
     </div>
-  );
-}
-
-export default function OnboardingPage() {
-  return (
-    <Suspense fallback={null}>
-      <OnboardingContent />
-    </Suspense>
   );
 }

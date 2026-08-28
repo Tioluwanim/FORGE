@@ -1,37 +1,48 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Send, MessageSquareCode } from "lucide-react";
 import { ThinkingIndicator } from "@/components/motion/loading-state";
-import { AI_MENTOR_TRANSCRIPT } from "@/lib/mock-data";
+import { aiMentorApi } from "@/lib/api";
+import { ApiError } from "@/lib/api-client";
 import { cn } from "@/lib/cn";
 
+interface ChatMessage {
+  role: "user" | "assistant";
+  text: string;
+}
+
 export default function AiMentorPage() {
-  const [messages, setMessages] = useState(AI_MENTOR_TRANSCRIPT);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [configError, setConfigError] = useState<string | null>(null);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, thinking]);
-
-  function send() {
+  async function send() {
     if (!input.trim()) return;
-    setMessages((m) => [...m, { role: "user", text: input }]);
+    const userMessage: ChatMessage = { role: "user", text: input };
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
     setInput("");
     setThinking(true);
-    setTimeout(() => {
+    setConfigError(null);
+
+    try {
+      const { reply } = await aiMentorApi.chat({
+        message: userMessage.text,
+        conversation_history: nextMessages.map((m) => ({ role: m.role, content: m.text })),
+      });
+      setMessages((m) => [...m, { role: "assistant", text: reply }]);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 501) {
+        setConfigError("AI Mentor isn't configured on the backend yet — add ANTHROPIC_API_KEY to .env.");
+      } else {
+        setConfigError("Something went wrong reaching the mentor. Try again.");
+      }
+    } finally {
       setThinking(false);
-      setMessages((m) => [
-        ...m,
-        {
-          role: "assistant",
-          text: "Walk me through what the test expects versus what your function currently returns — where's the first place they diverge?",
-        },
-      ]);
-    }, 1100);
+    }
   }
 
   return (
@@ -40,43 +51,37 @@ export default function AiMentorPage() {
         <MessageSquareCode className="h-4 w-4 text-ember" />
         <div>
           <p className="font-display text-lg text-text">AI Mentor</p>
-          <p className="text-xs text-text-faint">
-            Context: challenge &ldquo;Fix the N+1 query&rdquo;
-          </p>
+          <p className="text-xs text-text-faint">Ask about anything you're working on</p>
         </div>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto py-4" aria-live="polite">
+      <div className="flex-1 space-y-3 overflow-y-auto py-4">
+        {messages.length === 0 && !thinking && (
+          <p className="text-center text-sm text-text-faint">
+            Ask a question about a concept, a bug, or a design decision.
+          </p>
+        )}
         <AnimatePresence initial={false}>
-          {messages.map((m, i) => {
-            if (m.role === "system") {
-              return (
-                <p key={i} className="text-center font-mono text-xs text-text-faint">
-                  {m.text}
-                </p>
-              );
-            }
-            return (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}
+          {messages.map((m, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}
+            >
+              <div
+                className={cn(
+                  "max-w-md rounded-md px-4 py-2.5 text-sm",
+                  m.role === "user"
+                    ? "rounded-tr-none bg-elevated text-text-muted"
+                    : "rounded-tl-none border border-ember/30 bg-ember/5 text-text"
+                )}
               >
-                <div
-                  className={cn(
-                    "max-w-md rounded-md px-4 py-2.5 text-sm",
-                    m.role === "user"
-                      ? "rounded-tr-none bg-elevated text-text-muted"
-                      : "rounded-tl-none border border-ember/30 bg-ember/5 text-text"
-                  )}
-                >
-                  {m.text}
-                </div>
-              </motion.div>
-            );
-          })}
+                {m.text}
+              </div>
+            </motion.div>
+          ))}
         </AnimatePresence>
         {thinking && (
           <div className="flex justify-start">
@@ -85,26 +90,26 @@ export default function AiMentorPage() {
             </div>
           </div>
         )}
-        <div ref={messagesEndRef} />
+        {configError && (
+          <p className="text-center text-xs text-signal-fail">{configError}</p>
+        )}
       </div>
 
-      <form className="flex items-center gap-2 border-t border-hairline pt-4" onSubmit={(event) => { event.preventDefault(); send(); }}>
+      <div className="flex items-center gap-2 border-t border-hairline pt-4">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          aria-label="Message the AI mentor"
+          onKeyDown={(e) => e.key === "Enter" && send()}
           placeholder="Ask the mentor…"
           className="flex-1 rounded-md border border-hairline bg-surface px-3.5 py-2.5 text-sm text-text placeholder:text-text-faint focus:outline-none focus:border-ember"
         />
         <button
-          type="submit"
-          disabled={!input.trim() || thinking}
-          aria-label="Send message"
+          onClick={send}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-ember text-void hover:bg-ember-glow"
         >
           <Send className="h-4 w-4" />
         </button>
-      </form>
+      </div>
     </div>
   );
 }

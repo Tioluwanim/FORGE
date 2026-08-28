@@ -1,15 +1,25 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { MasteryRing } from "@/components/ui/mastery-ring";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Reveal } from "@/components/motion/reveal";
-import { TRACKS } from "@/lib/mock-data";
-
-const BREAKDOWN = [
-  { concept: "Concurrency", understanding: 81, implementation: 72, debugging: 54, recall: 64 },
-  { concept: "FastAPI Dependency Injection", understanding: 88, implementation: 70, debugging: 61, recall: 75 },
-  { concept: "PostgreSQL Transactions", understanding: 60, implementation: 45, debugging: 30, recall: 48 },
-];
+import { LoadingState } from "@/components/motion/loading-state";
+import { useAuth } from "@/lib/use-auth";
+import { progressApi, type MasteryBreakdown } from "@/lib/api";
 
 export default function ProgressPage() {
+  const { tracks, loading: authLoading } = useAuth();
+  const [breakdown, setBreakdown] = useState<MasteryBreakdown[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  useEffect(() => {
+    if (authLoading) return;
+    progressApi.breakdown().then(setBreakdown).finally(() => setLoadingData(false));
+  }, [authLoading]);
+
+  if (authLoading || loadingData) return <LoadingState context="default" />;
+
   return (
     <div className="mx-auto max-w-4xl">
       <Reveal>
@@ -19,7 +29,7 @@ export default function ProgressPage() {
 
       <Reveal delay={0.1} className="mt-6">
         <div className="grid gap-4 sm:grid-cols-3">
-          {TRACKS.map((t) => (
+          {tracks.map((t) => (
             <Card key={t.language}>
               <CardContent className="flex items-center gap-4 py-5">
                 <MasteryRing value={t.pct} size={56} strokeWidth={5} />
@@ -35,17 +45,19 @@ export default function ProgressPage() {
         </div>
       </Reveal>
 
-      <div className="mt-8 space-y-4">
-        {BREAKDOWN.map((c, i) => {
-          const overall = Math.round(
-            (c.understanding + c.implementation + c.debugging + c.recall) / 4
-          );
-          return (
+      {breakdown.length === 0 ? (
+        <p className="mt-8 text-sm text-text-faint">
+          No mastery data yet — submit a challenge or answer a knowledge check to see a
+          breakdown here.
+        </p>
+      ) : (
+        <div className="mt-8 space-y-4">
+          {breakdown.map((c, i) => (
             <Reveal key={c.concept} delay={0.15 + i * 0.05}>
               <Card>
                 <CardHeader>
                   <CardTitle>{c.concept}</CardTitle>
-                  <span className="font-mono text-sm text-text">{overall}%</span>
+                  <span className="font-mono text-sm text-text">{c.overall}%</span>
                 </CardHeader>
                 <CardContent className="grid grid-cols-4 gap-4">
                   {(
@@ -72,9 +84,9 @@ export default function ProgressPage() {
                 </CardContent>
               </Card>
             </Reveal>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

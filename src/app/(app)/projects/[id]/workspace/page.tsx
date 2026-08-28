@@ -1,13 +1,15 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { notFound } from "next/navigation";
 import { CheckCircle2, Circle, FileCode } from "lucide-react";
 import { CodeEditor } from "@/components/lab/code-editor";
 import { Badge } from "@/components/ui/badge";
-import { PROJECTS } from "@/lib/mock-data";
+import { LoadingState } from "@/components/motion/loading-state";
+import { projectsApi, type ProjectDetail } from "@/lib/api";
+import { ApiError } from "@/lib/api-client";
 
-const FILES = ["main.py", "models.py", "routes.py", "tests/test_expenses.py"];
+const FILES = ["main.py", "models.py", "routes.py", "tests/test_solution.py"];
 
 export default function ProjectWorkspacePage({
   params,
@@ -15,13 +17,24 @@ export default function ProjectWorkspacePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const project = PROJECTS.find((p) => p.id === id);
+  const [project, setProject] = useState<ProjectDetail | null>(null);
+  const [notFoundFlag, setNotFoundFlag] = useState(false);
   const [activeFile, setActiveFile] = useState(FILES[0]);
   const [code, setCode] = useState(
-    "from fastapi import FastAPI\n\napp = FastAPI()\n\n# TODO: wire up expense routes\n"
+    "from fastapi import FastAPI\n\napp = FastAPI()\n\n# TODO: wire up routes\n"
   );
 
-  if (!project) notFound();
+  useEffect(() => {
+    projectsApi
+      .get(id)
+      .then(setProject)
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 404) setNotFoundFlag(true);
+      });
+  }, [id]);
+
+  if (notFoundFlag) notFound();
+  if (!project) return <LoadingState context="project" />;
 
   return (
     <div className="-m-8 flex h-[calc(100vh-3.5rem)] flex-col">
@@ -65,7 +78,7 @@ export default function ProjectWorkspacePage({
           </p>
           <div className="mt-3 space-y-2">
             {project.milestones.map((m) => (
-              <div key={m.title} className="flex items-start gap-2">
+              <div key={m.id} className="flex items-start gap-2">
                 {m.done ? (
                   <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-signal-pass" />
                 ) : (

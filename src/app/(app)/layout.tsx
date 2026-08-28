@@ -5,15 +5,15 @@ import { CinematicShell } from "@/components/motion/cinematic-shell";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <CinematicShell transition={false}>
-      <div className="flex">
-        <Sidebar />
-        <CommandPalette />
-        <div className="flex min-h-screen flex-1 flex-col">
-          <Topbar />
-          <main className="flex-1 p-8">{children}</main>
-        </div>
+    <div className="flex">
+      <Sidebar />
+      <CommandPalette />
+      <div className="flex min-h-screen flex-1 flex-col">
+        <Topbar />
+        <main className="flex-1 p-8">
+          <CinematicShell>{children}</CinematicShell>
+        </main>
       </div>
-    </CinematicShell>
+    </div>
   );
 }

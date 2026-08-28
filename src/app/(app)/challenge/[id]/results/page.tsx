@@ -1,12 +1,14 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CHALLENGES } from "@/lib/mock-data";
+import { LoadingState } from "@/components/motion/loading-state";
+import { challengesApi, type ChallengeDetail } from "@/lib/api";
+import { ApiError } from "@/lib/api-client";
 
 export default function ChallengeResultsPage({
   params,
@@ -14,8 +16,20 @@ export default function ChallengeResultsPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const challenge = CHALLENGES.find((c) => c.id === id);
-  if (!challenge) notFound();
+  const [challenge, setChallenge] = useState<ChallengeDetail | null>(null);
+  const [notFoundFlag, setNotFoundFlag] = useState(false);
+
+  useEffect(() => {
+    challengesApi
+      .get(id)
+      .then(setChallenge)
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 404) setNotFoundFlag(true);
+      });
+  }, [id]);
+
+  if (notFoundFlag) notFound();
+  if (!challenge) return <LoadingState context="default" />;
 
   return (
     <div className="mx-auto max-w-lg text-center">
@@ -28,16 +42,16 @@ export default function ChallengeResultsPage({
       <Card className="mt-6 text-left">
         <CardContent className="grid grid-cols-3 gap-4 text-center">
           <div>
-            <p className="font-display text-xl text-text">5/5</p>
-            <p className="mt-1 font-mono text-[10px] uppercase text-text-faint">Tests passed</p>
+            <p className="font-display text-xl text-text">✓</p>
+            <p className="mt-1 font-mono text-[10px] uppercase text-text-faint">All tests passed</p>
           </div>
           <div>
-            <p className="font-display text-xl text-text">2</p>
-            <p className="mt-1 font-mono text-[10px] uppercase text-text-faint">Hints used</p>
+            <p className="font-display text-xl text-text">{challenge.hints.length}</p>
+            <p className="mt-1 font-mono text-[10px] uppercase text-text-faint">Hints available</p>
           </div>
           <div>
-            <p className="font-display text-xl text-text">3</p>
-            <p className="mt-1 font-mono text-[10px] uppercase text-text-faint">Attempts</p>
+            <p className="font-display text-xl text-text">{challenge.difficulty}</p>
+            <p className="mt-1 font-mono text-[10px] uppercase text-text-faint">Difficulty</p>
           </div>
         </CardContent>
       </Card>

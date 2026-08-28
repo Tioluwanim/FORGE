@@ -6,10 +6,6 @@ interface CodeEditorProps {
   filename?: string;
 }
 
-export function filenameForLanguage(language: "python" | "javascript" | "java") {
-  return language === "python" ? "solution.py" : language === "javascript" ? "solution.js" : "Solution.java";
-}
-
 /**
  * Placeholder editor matching the Monaco layout/chrome. Swap the body of this
  * component for a `next/dynamic` import of `@monaco-editor/react` (ssr: false)

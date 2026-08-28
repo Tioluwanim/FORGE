@@ -4,14 +4,15 @@ import { useRef } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { motion, useMotionValue, useSpring, useTransform, useReducedMotion } from "motion/react";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ArrowDown } from "lucide-react";
 import { Reveal, Stagger, StaggerItem } from "@/components/motion/reveal";
 import { LineReveal } from "@/components/motion/text-reveal";
 import { MagneticButton } from "@/components/motion/magnetic-button";
 import { TiltCard } from "@/components/motion/tilt-card";
-import { GlowField, NoiseOverlay, ParticleField, GridBackground } from "@/components/motion/backgrounds";
+import { GlowField, ParticleField, GridBackground } from "@/components/motion/backgrounds";
 import { ScrollStory } from "@/components/motion/scroll-story";
 import { ArchitectureDiagram } from "@/components/motion/architecture-diagram";
+import { InteractiveShowcase } from "@/components/marketing/interactive-showcase";
 import { motionTokens } from "@/lib/motion-tokens";
 
 // R3F touches WebGL — dynamically imported, client-only, and mounted nowhere
@@ -51,8 +52,6 @@ function Hero() {
       <GridBackground />
       <GlowField />
       <ParticleField count={20} />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_24%,rgba(8,8,10,0.18)_58%,rgba(8,8,10,0.82)_100%)]" />
-      <NoiseOverlay opacity={0.035} />
       {!reduceMotion && (
         <div className="absolute inset-0">
           <HeroScene />
@@ -104,16 +103,35 @@ function Hero() {
           transition={{ duration: 0.6, delay: 2.7 }}
           className="mt-10 flex items-center gap-4"
         >
-          <MagneticButton as="a" href="/signup" data-cursor="ENTER">Enter the Lab</MagneticButton>
-          <Link
-            href="/tracks"
-            data-cursor="VIEW"
-            className="rounded-md border border-hairline px-6 py-3 text-sm text-text-muted hover:border-text-faint hover:text-text"
-          >
-            Explore the Path
+          <Link href="/signup" data-cursor="ENTER">
+            <MagneticButton>Enter the Lab</MagneticButton>
           </Link>
+          <a
+            href="#try-it"
+            data-cursor="TRY IT"
+            className="flex items-center gap-2 rounded-md border border-hairline px-6 py-3 text-sm text-text-muted hover:border-text-faint hover:text-text"
+          >
+            Try it — no signup
+            <ArrowDown className="h-3.5 w-3.5" />
+          </a>
         </motion.div>
       </motion.div>
+
+      <motion.a
+        href="#try-it"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.6, delay: 3.4 }}
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 text-text-faint hover:text-text-muted"
+        aria-label="Scroll to interactive demo"
+      >
+        <motion.div
+          animate={{ y: [0, 6, 0] }}
+          transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
+        >
+          <ArrowDown className="h-4 w-4" />
+        </motion.div>
+      </motion.a>
     </section>
   );
 }
@@ -125,6 +143,21 @@ export default function LandingPage() {
     <div ref={containerRef}>
       <Hero />
 
+      {/* Interactive showcase — the actual product, usable right here, no signup */}
+      <section className="px-6 py-28">
+        <Reveal className="mx-auto max-w-3xl text-center">
+          <p className="font-mono text-xs uppercase tracking-widest text-ember">
+            Not a demo video. The actual thing.
+          </p>
+          <p className="mt-2 font-display text-2xl font-medium text-text md:text-3xl">
+            Try it right now.
+          </p>
+        </Reveal>
+        <div className="mt-10">
+          <InteractiveShowcase />
+        </div>
+      </section>
+
       {/* Section 1 — The Problem */}
       <section className="mx-auto max-w-3xl px-6 py-32 text-center">
         <Reveal>
@@ -134,6 +167,11 @@ export default function LandingPage() {
             You understood it.
             <br />
             <span className="text-text-muted">You still couldn&rsquo;t build it.</span>
+          </p>
+        </Reveal>
+        <Reveal delay={0.15}>
+          <p className="mt-6 text-sm text-text-faint">
+            That palindrome bug above? That&rsquo;s the difference. Reading the fix and typing it yourself are two different skills.
           </p>
         </Reveal>
       </section>
@@ -184,7 +222,7 @@ export default function LandingPage() {
         <div className="mx-auto mt-10 grid max-w-5xl gap-5 md:grid-cols-3">
           {LANGUAGE_TRACKS.map((track, i) => (
             <Reveal key={track.name} delay={i * 0.1}>
-              <Link href={`/select-language?language=${track.name.toLowerCase()}`} data-cursor="SELECT">
+              <Link href="/select-language" data-cursor="SELECT">
                 <TiltCard
                   className={`group relative overflow-hidden rounded-md border bg-surface p-8 ${track.accent}`}
                 >
@@ -232,37 +270,22 @@ export default function LandingPage() {
         </Stagger>
       </section>
 
-      {/* Section 7 — AI Mentor */}
-      <section className="border-y border-hairline bg-surface/40 px-6 py-32">
-        <div className="mx-auto max-w-2xl">
-          <Reveal>
-            <p className="text-center font-mono text-xs uppercase tracking-widest text-ember">
-              AI Mentor
-            </p>
-          </Reveal>
-          <div className="mt-8 space-y-3">
-            <Reveal delay={0.1}>
-              <div className="ml-auto max-w-sm rounded-md rounded-tr-none bg-elevated px-4 py-2.5 text-sm text-text-muted">
-                Tests failing — not sure why.
-              </div>
-            </Reveal>
-            <Reveal delay={0.25}>
-              <div className="max-w-md rounded-md rounded-tl-none border border-ember/30 bg-ember/5 px-4 py-3 text-sm text-text">
-                Look at the lifecycle of the dependency. What happens when the required value is missing?
-              </div>
-            </Reveal>
-            <Reveal delay={0.4}>
-              <div className="ml-auto max-w-sm rounded-md rounded-tr-none bg-elevated px-4 py-2.5 text-sm text-text-muted">
-                Still stuck.
-              </div>
-            </Reveal>
-            <Reveal delay={0.55}>
-              <div className="max-w-md rounded-md rounded-tl-none border border-ember/30 bg-ember/5 px-4 py-3 text-sm text-text">
-                Check what your dependency returns when the header is missing entirely, versus when it&rsquo;s empty. Those are different cases.
-              </div>
-            </Reveal>
-          </div>
-        </div>
+      {/* Section 7 — AI Mentor callback */}
+      <section className="border-y border-hairline bg-surface/40 px-6 py-24 text-center">
+        <Reveal>
+          <p className="font-mono text-xs uppercase tracking-widest text-ember">AI Mentor</p>
+          <p className="mt-3 max-w-xl mx-auto text-text-muted">
+            You already talked to it. Notice it asked you a question back instead of
+            handing you the fix — that&rsquo;s deliberate, on every hint, for every
+            learner, every time.
+          </p>
+          <a
+            href="#try-it"
+            className="mt-5 inline-flex items-center gap-1.5 text-sm text-ember hover:text-ember-glow"
+          >
+            Talk to it again <ArrowRight className="h-3.5 w-3.5" />
+          </a>
+        </Reveal>
       </section>
 
       {/* Section 8 — Production */}
@@ -303,10 +326,13 @@ export default function LandingPage() {
           </p>
         </Reveal>
         <Reveal delay={0.15}>
-          <div className="mt-10 flex justify-center">
+          <div className="mt-10 flex flex-col items-center gap-4">
             <Link href="/signup" data-cursor="ENTER">
               <MagneticButton className="px-8 py-3.5">Enter the Lab</MagneticButton>
             </Link>
+            <a href="#try-it" className="text-xs text-text-faint hover:text-text-muted">
+              Or scroll back up and try it again ↑
+            </a>
           </div>
         </Reveal>
       </section>

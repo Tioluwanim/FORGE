@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { notFound, useRouter } from "next/navigation";
 import { use } from "react";
 import { ExternalLink, Clock, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { CONCEPTS } from "@/lib/mock-data";
+import { LoadingState } from "@/components/motion/loading-state";
+import { curriculumApi, type ConceptDetail } from "@/lib/api";
+import { ApiError } from "@/lib/api-client";
 
 export default function ConceptPage({
   params,
@@ -13,11 +15,22 @@ export default function ConceptPage({
   params: Promise<{ concept: string }>;
 }) {
   const { concept: slug } = use(params);
-  const concept = CONCEPTS.find((c) => c.slug === slug);
+  const [concept, setConcept] = useState<ConceptDetail | null>(null);
+  const [notFoundFlag, setNotFoundFlag] = useState(false);
   const [understood, setUnderstood] = useState(false);
   const router = useRouter();
 
-  if (!concept) notFound();
+  useEffect(() => {
+    curriculumApi
+      .concept(slug)
+      .then(setConcept)
+      .catch((err) => {
+        if (err instanceof ApiError && err.status === 404) setNotFoundFlag(true);
+      });
+  }, [slug]);
+
+  if (notFoundFlag) notFound();
+  if (!concept) return <LoadingState context="documentation" />;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -28,44 +41,50 @@ export default function ConceptPage({
         {concept.title}
       </h1>
 
-      <a
-        href={concept.docUrl}
-        target="_blank"
-        rel="noreferrer"
-        className="mt-5 flex items-center justify-between rounded-md border border-hairline bg-surface px-4 py-3.5 hover:border-text-faint"
-      >
-        <span className="flex items-center gap-2 text-sm text-text">
-          <ExternalLink className="h-3.5 w-3.5" />
-          Official documentation
-        </span>
-        <span className="flex items-center gap-1.5 font-mono text-xs text-text-faint">
-          <Clock className="h-3.5 w-3.5" />
-          {concept.estMinutes} min
-        </span>
-      </a>
+      {concept.doc_url && (
+        <a
+          href={concept.doc_url}
+          target="_blank"
+          rel="noreferrer"
+          className="mt-5 flex items-center justify-between rounded-md border border-hairline bg-surface px-4 py-3.5 hover:border-text-faint"
+        >
+          <span className="flex items-center gap-2 text-sm text-text">
+            <ExternalLink className="h-3.5 w-3.5" />
+            Official documentation
+          </span>
+          <span className="flex items-center gap-1.5 font-mono text-xs text-text-faint">
+            <Clock className="h-3.5 w-3.5" />
+            {concept.est_minutes} min
+          </span>
+        </a>
+      )}
 
-      <div className="mt-6 rounded-md border border-hairline bg-surface p-5">
-        <p className="font-mono text-[10px] uppercase tracking-wide text-text-faint">
-          Focus on
-        </p>
-        <ul className="mt-2 space-y-1.5">
-          {concept.focus.map((f) => (
-            <li key={f} className="flex items-start gap-2 text-sm text-text-muted">
-              <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-ember" />
-              {f}
-            </li>
-          ))}
-        </ul>
-      </div>
+      {concept.focus.length > 0 && (
+        <div className="mt-6 rounded-md border border-hairline bg-surface p-5">
+          <p className="font-mono text-[10px] uppercase tracking-wide text-text-faint">
+            Focus on
+          </p>
+          <ul className="mt-2 space-y-1.5">
+            {concept.focus.map((f) => (
+              <li key={f} className="flex items-start gap-2 text-sm text-text-muted">
+                <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-ember" />
+                {f}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
-      <div className="mt-6">
-        <p className="font-mono text-[10px] uppercase tracking-wide text-text-faint">
-          In your own words
-        </p>
-        <p className="mt-2 text-sm leading-relaxed text-text-muted">
-          {concept.summary}
-        </p>
-      </div>
+      {concept.summary && (
+        <div className="mt-6">
+          <p className="font-mono text-[10px] uppercase tracking-wide text-text-faint">
+            In your own words
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-text-muted">
+            {concept.summary}
+          </p>
+        </div>
+      )}
 
       <div className="mt-8 flex items-center gap-3">
         <Button

@@ -1,9 +1,7 @@
 "use client";
 
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas } from "@react-three/fiber";
 import { Float, Sparkles, Text } from "@react-three/drei";
-import { createElement, useRef } from "react";
-import type { Group, Mesh } from "three";
 
 const FRAGMENTS = [
   { text: "async def retry():", position: [-3.2, 1.4, -2] as [number, number, number] },
@@ -23,8 +21,8 @@ function CodeFragment({
     <Float speed={1.2} rotationIntensity={0.15} floatIntensity={0.6}>
       <Text
         position={position}
-        fontSize={0.2}
-        color="#A8A29E"
+        fontSize={0.22}
+        color="#5A5A61"
         anchorX="center"
         anchorY="middle"
         font={undefined}
@@ -35,96 +33,10 @@ function CodeFragment({
   );
 }
 
-function ForgeCore() {
-  const coreRef = useRef<Group>(null);
-  const pulseRef = useRef<Mesh>(null);
-
-  useFrame(({ clock, camera }) => {
-    const elapsed = clock.getElapsedTime();
-    if (coreRef.current) {
-      coreRef.current.rotation.z = elapsed * 0.12;
-      coreRef.current.rotation.y = elapsed * 0.2;
-    }
-    if (pulseRef.current) {
-      const scale = 1 + Math.sin(elapsed * 2.2) * 0.08;
-      pulseRef.current.scale.setScalar(scale);
-    }
-    camera.position.x += (Math.sin(elapsed * 0.18) * 0.16 - camera.position.x) * 0.02;
-    camera.position.y += (Math.cos(elapsed * 0.15) * 0.1 - camera.position.y) * 0.02;
-    camera.lookAt(0, 0, 0);
-  });
-
-  return createElement(
-    "group",
-    // eslint-disable-next-line react-hooks/refs
-    { ref: coreRef },
-    createElement(
-      "mesh",
-      { rotation: [Math.PI / 2, 0, 0] },
-      createElement("torusGeometry", { args: [1.45, 0.012, 12, 96] }),
-      createElement("meshBasicMaterial", { color: "#FF6A39", transparent: true, opacity: 0.65 })
-    ),
-    createElement(
-      "mesh",
-      { rotation: [0, Math.PI / 2, Math.PI / 5] },
-      createElement("torusGeometry", { args: [1.1, 0.008, 12, 96] }),
-      createElement("meshBasicMaterial", { color: "#FBBF24", transparent: true, opacity: 0.4 })
-    ),
-    createElement(
-      "mesh",
-      // eslint-disable-next-line react-hooks/refs
-      { ref: pulseRef },
-      createElement("icosahedronGeometry", { args: [0.32, 2] }),
-      createElement("meshStandardMaterial", {
-        color: "#FF6A39",
-        emissive: "#FF3D16",
-        emissiveIntensity: 2.5,
-        roughness: 0.25,
-      })
-    ),
-    createElement("pointLight", { color: "#FF6A39", intensity: 2.5, distance: 5 }),
-    createElement(
-      "mesh",
-      { rotation: [Math.PI / 4, Math.PI / 4, 0] },
-      createElement("boxGeometry", { args: [2.1, 2.1, 2.1] }),
-      createElement("meshBasicMaterial", { color: "#FF6A39", wireframe: true, transparent: true, opacity: 0.08 })
-    )
-  );
-}
-
-function OrbitingShard({ index }: { index: number }) {
-  const angle = (index / 6) * Math.PI * 2;
-  const shardRef = useRef<Group>(null);
-
-  useFrame(({ clock }) => {
-    const elapsed = clock.getElapsedTime() * 0.35 + angle;
-    const shard = shardRef.current;
-    if (!shard) return;
-    shard.position.set(
-      Math.cos(elapsed) * 2.05,
-      Math.sin(elapsed * 1.15) * 0.7,
-      Math.sin(elapsed) * 0.8 - 0.8
-    );
-    shard.rotation.x = elapsed * 1.4;
-    shard.rotation.y = elapsed * 1.1;
-  });
-
-  return createElement(
-    "group",
-    // eslint-disable-next-line react-hooks/refs
-    { ref: shardRef },
-    createElement(
-      "mesh",
-      null,
-      createElement("octahedronGeometry", { args: [0.06, 0] }),
-      createElement("meshBasicMaterial", { color: index % 2 ? "#FBBF24" : "#FF6A39" })
-    )
-  );
-}
-
 /**
- * Rendered only in the landing hero, dynamically imported with ssr:false
- * (see the landing page), never mounted elsewhere.
+ * Deliberately minimal — a few drifting code fragments plus an ember
+ * sparkle field. Rendered only in the landing hero, dynamically imported
+ * with ssr:false (see the landing page), never mounted elsewhere.
  */
 export function HeroScene() {
   return (
@@ -134,11 +46,8 @@ export function HeroScene() {
       gl={{ antialias: true, alpha: true }}
       style={{ pointerEvents: "none" }}
     >
-      {createElement("ambientLight", { intensity: 0.4 })}
-      <ForgeCore />
-      {Array.from({ length: 6 }, (_, index) => <OrbitingShard key={index} index={index} />)}
-      <Sparkles count={110} scale={[8, 5, 4]} size={2} speed={0.3} color="#FF6A39" opacity={0.55} />
-      <Sparkles count={35} scale={[5, 3, 3]} size={4} speed={0.15} color="#FBBF24" opacity={0.3} />
+      <ambientLight intensity={0.4} />
+      <Sparkles count={60} scale={[8, 5, 4]} size={2} speed={0.25} color="#FF6A39" opacity={0.5} />
       {FRAGMENTS.map((f) => (
         <CodeFragment key={f.text} text={f.text} position={f.position} />
       ))}

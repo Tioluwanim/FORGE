@@ -85,15 +85,15 @@ response (currently a `setTimeout` stand-in), and Theatre.js / Rive (spec
 explicitly says: only add if the project actually needs the extra
 choreography — nothing here does yet).
 
+## Fully wired to the backend
+
+Every route with a matching backend endpoint now calls it for real — `mock-data.ts` has been deleted. That's auth, onboarding/track creation, dashboard, roadmap, learn/documentation, practice (knowledge checks), challenges + submissions, projects + workspace, reviews, the debugging lab, the AI Mentor, the system design canvas (server-side validated + persisted), and all four settings pages.
+
+`/production` is the one deliberate exception — it's a pure client-side simulation with no backend call, because there's genuinely no data model for it to persist against (unlike incidents/system-design, nothing in the architecture plan's schema models "production scenario attempts"). It doesn't need one either — it's an animated demonstration, not something with state worth saving.
+
 ## Not built yet
 
-- Wiring to the real FastAPI backend (`forge-architecture-plan.md`) — everything reads from `mock-data.ts`
 - Real Monaco editor (currently a styled `<textarea>` placeholder in `CodeEditor` — swap for a `next/dynamic` import of `@monaco-editor/react` per the plan doc's §3.2 reasoning)
-- Auth logic (forms are UI-only, no real request wiring)
-- Real sandbox execution polling (the challenge page simulates a test run with `setTimeout`)
-
-## Next step
-
-Wire `(app)` pages to real data via TanStack Query once the backend exists,
-starting with `auth` → `tracks` → `dashboard`, per the architecture plan's own
-phase ordering.
+- Real sandbox execution — the challenge page calls the real `/submissions` endpoint, but that endpoint itself is heuristic/non-executing on the backend (see the backend README's "What's explicitly stubbed" section)
+- OAuth buttons are disabled in the UI until the backend has real Google/GitHub credentials configured
+- Set `NEXT_PUBLIC_API_URL` in `.env.local` (see `.env.local.example`) — defaults to `http://localhost:8000/api/v1`

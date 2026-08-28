@@ -19,11 +19,7 @@ if (typeof window !== "undefined") {
  * in sync — this is Lenis's own documented integration pattern.
  */
 export function SmoothScrollProvider({ children }: { children: ReactNode }) {
-  const lenisRef = useRef<{
-    wrapper: HTMLDivElement | null;
-    content: HTMLDivElement | null;
-    lenis?: Lenis;
-  } | null>(null);
+  const lenisRef = useRef<{ lenis?: Lenis } | null>(null);
   const reduceMotion = useReducedMotion();
 
   useEffect(() => {

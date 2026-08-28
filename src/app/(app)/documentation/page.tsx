@@ -1,12 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Search, ExternalLink } from "lucide-react";
-import { CONCEPTS } from "@/lib/mock-data";
+import { LoadingState } from "@/components/motion/loading-state";
+import { curriculumApi, type ConceptDetail } from "@/lib/api";
 
 export default function DocumentationPage() {
   const [query, setQuery] = useState("");
-  const filtered = CONCEPTS.filter((c) =>
+  const [concepts, setConcepts] = useState<ConceptDetail[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    curriculumApi.concepts().then(setConcepts).finally(() => setLoading(false));
+  }, []);
+
+  if (loading) return <LoadingState context="documentation" />;
+
+  const filtered = concepts.filter((c) =>
     c.title.toLowerCase().includes(query.toLowerCase())
   );
 
@@ -31,7 +41,7 @@ export default function DocumentationPage() {
         {filtered.map((c) => (
           <a
             key={c.slug}
-            href={c.docUrl}
+            href={c.doc_url ?? "#"}
             target="_blank"
             rel="noreferrer"
             className="flex items-center justify-between px-4 py-3.5 hover:bg-elevated"

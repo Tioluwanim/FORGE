@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Flame } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -5,11 +8,31 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MasteryRing } from "@/components/ui/mastery-ring";
 import { AnimatedNumber } from "@/components/motion/animated-number";
-import { TRACKS, WEAK_AREAS, TODAYS_PRACTICE, PROJECTS } from "@/lib/mock-data";
+import { LoadingState } from "@/components/motion/loading-state";
+import { useAuth } from "@/lib/use-auth";
+import { progressApi, projectsApi, type DashboardResponse, type ProjectSummary, type TrackResponse } from "@/lib/api";
 
 export default function DashboardPage() {
-  const currentProject = PROJECTS[1];
-  const doneCount = currentProject.milestones.filter((m) => m.done).length;
+  const { user, tracks, loading: authLoading } = useAuth();
+  const [dashboard, setDashboard] = useState<DashboardResponse | null>(null);
+  const [projects, setProjects] = useState<ProjectSummary[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+    Promise.all([progressApi.dashboard(), projectsApi.list()])
+      .then(([d, p]) => {
+        setDashboard(d);
+        setProjects(p);
+      })
+      .finally(() => setLoadingData(false));
+  }, [authLoading, user]);
+
+  if (authLoading || loadingData) {
+    return <LoadingState context="default" />;
+  }
+
+  const currentProject = projects[0];
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -25,20 +48,28 @@ export default function DashboardPage() {
           <CardHeader>
             <div>
               <CardTitle>Current Mission</CardTitle>
-              <p className="mt-1.5 font-display text-lg text-text">Async Python</p>
+              <p className="mt-1.5 font-display text-lg text-text">
+                {dashboard?.current_mission_concept ?? "Pick your first concept"}
+              </p>
             </div>
             <Badge tone="ember">Recommended</Badge>
           </CardHeader>
           <CardContent className="flex items-center justify-between">
             <div>
               <p className="text-sm text-text-muted">
-                You&rsquo;re learning: Concurrency vs Parallelism
+                {dashboard?.current_mission_concept
+                  ? `You're learning: ${dashboard.current_mission_concept}`
+                  : "Head to the roadmap to get started."}
               </p>
-              <p className="mt-2 font-mono text-xs text-text-faint">Mastery: 68%</p>
+              {dashboard?.current_mission_pct != null && (
+                <p className="mt-2 font-mono text-xs text-text-faint">
+                  Mastery: {dashboard.current_mission_pct}%
+                </p>
+              )}
             </div>
             <div className="flex items-center gap-4">
-              <MasteryRing value={68} size={64} strokeWidth={5} />
-              <Link href="/learn/event-loop">
+              <MasteryRing value={dashboard?.current_mission_pct ?? 0} size={64} strokeWidth={5} />
+              <Link href="/roadmap">
                 <Button variant="primary" size="sm">
                   Continue <ArrowRight className="h-3.5 w-3.5" />
                 </Button>
@@ -56,8 +87,9 @@ export default function DashboardPage() {
             <p className="font-mono text-xs uppercase tracking-wide text-text-faint">
               Backend Engineering
             </p>
-            <p className="font-display text-3xl text-ember">LEVEL 4</p>
-            <p className="text-sm text-text-muted">System Builder</p>
+            <p className="font-display text-3xl text-ember">
+              LEVEL {dashboard?.engineering_level ?? 1}
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -69,7 +101,10 @@ export default function DashboardPage() {
             <CardTitle>Weak Areas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {WEAK_AREAS.map((w) => (
+            {(dashboard?.weak_areas ?? []).length === 0 && (
+              <p className="text-sm text-text-faint">Nothing weak yet — keep going.</p>
+            )}
+            {dashboard?.weak_areas.map((w) => (
               <div key={w.concept} className="flex items-center justify-between">
                 <span className="text-sm text-text-muted">{w.concept}</span>
                 <span className="font-mono text-xs text-signal-warn">{w.pct}%</span>
@@ -84,16 +119,14 @@ export default function DashboardPage() {
             <CardTitle>Today&rsquo;s Practice</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {TODAYS_PRACTICE.map((p) => (
-              <Link
-                key={p.id}
-                href={p.type === "code" || p.type === "debug" ? `/challenge/${p.id}` : "/practice"}
-                className="flex items-center justify-between rounded px-2 py-1.5 -mx-2 hover:bg-elevated"
-              >
-                <span className="text-sm text-text-muted">{p.title}</span>
-                <span className="font-mono text-xs text-text-faint">{p.estMinutes}m</span>
-              </Link>
-            ))}
+            <Link href="/practice" className="flex items-center justify-between rounded px-2 py-1.5 -mx-2 hover:bg-elevated">
+              <span className="text-sm text-text-muted">Knowledge checks</span>
+              <span className="font-mono text-xs text-text-faint">~10m</span>
+            </Link>
+            <Link href="/roadmap" className="flex items-center justify-between rounded px-2 py-1.5 -mx-2 hover:bg-elevated">
+              <span className="text-sm text-text-muted">Recommended challenge</span>
+              <span className="font-mono text-xs text-text-faint">~15m</span>
+            </Link>
           </CardContent>
         </Card>
 
@@ -105,8 +138,10 @@ export default function DashboardPage() {
           <CardContent className="flex items-center justify-center gap-3 py-6">
             <Flame className="h-8 w-8 text-ember" />
             <div>
+              {/* TODO: real streak needs a daily-activity table — not modeled
+                  yet in the backend. Hardcoded until that exists. */}
               <p className="font-display text-3xl text-text">
-                <AnimatedNumber value={12} />
+                <AnimatedNumber value={0} />
               </p>
               <p className="text-xs text-text-faint">days in a row</p>
             </div>
@@ -119,28 +154,37 @@ export default function DashboardPage() {
         <Card>
           <CardHeader>
             <CardTitle>Current Project</CardTitle>
-            <Badge tone="info">{currentProject.difficulty}</Badge>
+            {currentProject && <Badge tone="info">{currentProject.difficulty}</Badge>}
           </CardHeader>
           <CardContent>
-            <p className="font-display text-base text-text">{currentProject.title}</p>
-            <p className="mt-1 text-sm text-text-muted">{currentProject.description}</p>
-            <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-elevated">
-              <div
-                className="h-full rounded-full bg-ember"
-                style={{ width: `${(doneCount / currentProject.milestones.length) * 100}%` }}
-              />
-            </div>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="font-mono text-xs text-text-faint">
-                {doneCount} / {currentProject.milestones.length} milestones
-              </span>
-              <Link
-                href={`/projects/${currentProject.id}`}
-                className="text-xs text-text-muted hover:text-text"
-              >
-                View project →
-              </Link>
-            </div>
+            {currentProject ? (
+              <>
+                <p className="font-display text-base text-text">{currentProject.title}</p>
+                <p className="mt-1 text-sm text-text-muted">{currentProject.description}</p>
+                <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-elevated">
+                  <div
+                    className="h-full rounded-full bg-ember"
+                    style={{
+                      width: `${
+                        currentProject.milestones_total
+                          ? (currentProject.milestones_done / currentProject.milestones_total) * 100
+                          : 0
+                      }%`,
+                    }}
+                  />
+                </div>
+                <div className="mt-2 flex items-center justify-between">
+                  <span className="font-mono text-xs text-text-faint">
+                    {currentProject.milestones_done} / {currentProject.milestones_total} milestones
+                  </span>
+                  <Link href={`/projects/${currentProject.id}`} className="text-xs text-text-muted hover:text-text">
+                    View project →
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <p className="text-sm text-text-faint">No project started yet.</p>
+            )}
           </CardContent>
         </Card>
 
@@ -150,7 +194,7 @@ export default function DashboardPage() {
             <CardTitle>Language Tracks</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {TRACKS.map((t) => (
+            {tracks.map((t: TrackResponse) => (
               <div key={t.language}>
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-text">{t.label}</span>
@@ -159,10 +203,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-elevated">
-                  <div
-                    className="h-full rounded-full bg-ember"
-                    style={{ width: `${t.pct}%` }}
-                  />
+                  <div className="h-full rounded-full bg-ember" style={{ width: `${t.pct}%` }} />
                 </div>
               </div>
             ))}

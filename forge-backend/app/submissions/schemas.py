@@ -1,0 +1,28 @@
+from pydantic import BaseModel
+
+
+class SubmissionCreateRequest(BaseModel):
+    track_id: str
+    files: dict[str, str]  # path -> content
+
+
+class SubmissionResponse(BaseModel):
+    id: str
+    status: str
+
+
+class TestCaseResult(BaseModel):
+    name: str
+    passed: bool
+    duration_ms: int
+    message: str | None = None
+    hidden: bool = False
+
+
+class SubmissionResultResponse(BaseModel):
+    id: str
+    status: str
+    tests_passed: int
+    tests_total: int
+    duration_ms: int
+    results: list[TestCaseResult]
