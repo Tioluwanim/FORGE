@@ -1,10 +1,14 @@
+```python
 from functools import lru_cache
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore",
+    )
 
     # App
     app_name: str = "FORGE API"
@@ -28,9 +32,10 @@ class Settings(BaseSettings):
     github_client_id: str | None = None
     github_client_secret: str | None = None
 
-    # AI Mentor — set in .env, never commit a real key.
-    anthropic_api_key: str | None = None
-    anthropic_model: str = "claude-sonnet-4-5"
+    # AI Mentor — Groq
+    # Populate via .env — never commit a real key.
+    groq_api_key: str | None = None
+    groq_model: str = "llama-3.3-70b-versatile"
 
     # CORS
     cors_origins: list[str] = ["http://localhost:3000"]
@@ -44,3 +49,4 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+```
