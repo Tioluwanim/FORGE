@@ -1,4 +1,3 @@
-````python
 """
 AI Mentor — calls the Groq Chat Completions API directly.
 
@@ -119,4 +118,3 @@ async def get_mentor_reply(
         .get("content", "")
         .strip()
     )
-````
