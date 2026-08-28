@@ -51,7 +51,7 @@ export default function AiMentorPage() {
         <MessageSquareCode className="h-4 w-4 text-ember" />
         <div>
           <p className="font-display text-lg text-text">AI Mentor</p>
-          <p className="text-xs text-text-faint">Ask about anything you're working on</p>
+          <p className="text-xs text-text-faint">Ask about anything you&rsquo;re working on</p>
         </div>
       </div>
 
