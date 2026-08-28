@@ -1,13 +1,15 @@
+````python
 """
-AI Mentor — calls the Anthropic Messages API directly. See spec §17-18 for
-the behavioral contract this system prompt encodes: hints before answers,
-never claim tests passed without real results, distinguish syntax from
-architectural mistakes, adapt to the learner's actual code and history.
+AI Mentor — calls the Groq Chat Completions API directly.
 
-If ANTHROPIC_API_KEY isn't set, this raises rather than returning a canned
-"AI is thinking" placeholder — see the module-level rationale in
-submissions/sandbox.py for why this codebase prefers loud failure over
-quietly faking an AI response.
+Behavioral contract:
+- hints before answers
+- never claim tests passed without real results
+- distinguish syntax from architectural mistakes
+- adapt to the learner's actual code and history
+
+If GROQ_API_KEY isn't set, this raises rather than returning a canned
+"AI is thinking" placeholder.
 """
 
 import httpx
@@ -16,7 +18,7 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
-ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
+GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 
 MENTOR_SYSTEM_PROMPT = """You are the AI Mentor inside FORGE, an interactive \
 software engineering lab. A learner is working through a coding challenge \
@@ -55,47 +57,66 @@ async def get_mentor_reply(
     last_test_result_summary: str | None,
     conversation_history: list[dict],
 ) -> str:
-    if not settings.anthropic_api_key:
+    if not settings.groq_api_key:
         raise AiMentorNotConfiguredError(
-            "ANTHROPIC_API_KEY is not set — add it to .env to enable the AI Mentor."
+            "GROQ_API_KEY is not set — add it to .env to enable the AI Mentor."
         )
 
     context_parts = []
+
     if challenge_title:
         context_parts.append(f"Challenge: {challenge_title}")
+
     if challenge_description:
         context_parts.append(f"Description: {challenge_description}")
+
     if current_code:
-        context_parts.append(f"Learner's current code:\n```\n{current_code}\n```")
+        context_parts.append(
+            f"Learner's current code:\n```\n{current_code}\n```"
+        )
+
     if last_test_result_summary:
-        context_parts.append(f"Actual last test result: {last_test_result_summary}")
+        context_parts.append(
+            f"Actual last test result: {last_test_result_summary}"
+        )
     else:
-        context_parts.append("No tests have been run yet for this attempt.")
+        context_parts.append(
+            "No tests have been run yet for this attempt."
+        )
 
     context_block = "\n\n".join(context_parts)
 
     messages = [
+        {"role": "system", "content": MENTOR_SYSTEM_PROMPT},
         *conversation_history,
-        {"role": "user", "content": f"{context_block}\n\nLearner says: {user_message}"},
+        {
+            "role": "user",
+            "content": f"{context_block}\n\nLearner says: {user_message}",
+        },
     ]
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(
-            ANTHROPIC_API_URL,
+            GROQ_API_URL,
             headers={
-                "x-api-key": settings.anthropic_api_key,
-                "anthropic-version": "2023-06-01",
-                "content-type": "application/json",
+                "Authorization": f"Bearer {settings.groq_api_key}",
+                "Content-Type": "application/json",
             },
             json={
-                "model": settings.anthropic_model,
-                "max_tokens": 400,
-                "system": MENTOR_SYSTEM_PROMPT,
+                "model": settings.groq_model,
                 "messages": messages,
+                "max_tokens": 400,
+                "temperature": 0.4,
             },
         )
+
         response.raise_for_status()
         data = response.json()
 
-    text_blocks = [block["text"] for block in data.get("content", []) if block.get("type") == "text"]
-    return "\n".join(text_blocks).strip()
+    return (
+        data.get("choices", [{}])[0]
+        .get("message", {})
+        .get("content", "")
+        .strip()
+    )
+````
