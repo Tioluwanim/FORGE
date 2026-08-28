@@ -9,15 +9,18 @@ import { useAuth } from "@/lib/use-auth";
 function Toggle({
   checked,
   onChange,
+  disabled,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={() => onChange(!checked)}
+      disabled={disabled}
       className={cn(
-        "relative h-6 w-11 shrink-0 rounded-full transition-colors",
+        "relative h-6 w-11 shrink-0 rounded-full transition-colors disabled:opacity-50",
         checked ? "bg-ember" : "bg-elevated border border-hairline"
       )}
     >
@@ -84,6 +87,7 @@ export default function SettingsPreferencesPage() {
           <Toggle
             checked={prefs[row.key]}
             onChange={(v) => update(row.key, v)}
+            disabled={saving === row.key}
           />
         </div>
       ))}
