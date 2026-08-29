@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.challenges.schemas import ChallengeDetail, ChallengeSummary
+from app.core.uuid_utils import ensure_uuid
 from app.db.models_challenges import Challenge
 from app.db.session import get_db
 
@@ -24,6 +25,7 @@ def list_challenges(db: Session = Depends(get_db)) -> list[ChallengeSummary]:
 
 @router.get("/{challenge_id}", response_model=ChallengeDetail)
 def get_challenge(challenge_id: str, db: Session = Depends(get_db)) -> ChallengeDetail:
+    challenge_id = ensure_uuid(challenge_id)
     challenge = (
         db.query(Challenge)
         .options(joinedload(Challenge.files), joinedload(Challenge.hints))
