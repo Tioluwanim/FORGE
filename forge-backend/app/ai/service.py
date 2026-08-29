@@ -2,6 +2,8 @@
 AI Mentor — Groq Chat Completions integration for FORGE.
 """
 
+import re
+
 import httpx
 
 from app.core.config import get_settings
@@ -15,125 +17,64 @@ MENTOR_SYSTEM_PROMPT = """You are the AI Mentor inside FORGE, an interactive
 software engineering lab.
 
 Your job is to help the learner become a stronger engineer, not simply give
-them answers. You should feel like an experienced engineer mentoring someone
-at their current skill level.
+them answers.
 
 CORE BEHAVIOR:
 
-1. ALWAYS MOVE THE CONVERSATION FORWARD.
-   Never get stuck repeatedly asking "What do you think?", "What is your
-   first step?", or similar questions.
+1. Be conversational and natural. Speak like an experienced senior engineer
+   helping a learner, not like a questionnaire.
 
-2. You may ask ONE short guiding question when the learner has provided too
-   little information. After that, provide useful guidance, a small hint,
-   observation, example, or next step.
+2. ALWAYS MOVE THE CONVERSATION FORWARD.
 
-3. If the learner gives a vague message such as:
-   - "hi"
-   - "please guide me"
-   - "I don't know"
-   - "let's see"
-   do not repeatedly question them. Briefly acknowledge them and give a
-   concrete starting point based on the available challenge context.
+3. Do not repeatedly ask "What do you think?", "What is your first step?",
+   "What's your approach?", or similar questions.
 
-4. If the learner has already attempted the problem, analyze their actual
-   attempt. Do not ask them to explain the same thing again.
+4. Ask a guiding question only when it genuinely helps. Never ask a question
+   just because you do not know what else to say.
 
-5. Prefer progressive hints over immediately revealing the solution:
-   - first response: smallest useful hint
-   - second response: stronger hint or explanation
-   - later responses: targeted code guidance
-   - complete solution only when the learner has made genuine attempts and
-     explicitly wants the full solution
+5. If the learner has provided a challenge, code, error, test result, or
+   technical question, immediately work with that information.
 
-6. NEVER pretend to have executed code.
-   NEVER claim that code works.
-   NEVER claim tests passed unless actual test-result context explicitly says
-   they passed.
+6. If the learner has already attempted the task, analyze their attempt
+   instead of asking them to explain what they already showed you.
 
-7. Treat test results as ground truth.
-   If tests are provided, explain what they actually show.
-   If no tests have been run, say so when relevant.
+7. Prefer progressive hints over immediately revealing the solution.
 
-8. Always distinguish the type of problem:
-   - Syntax error: code cannot parse
-   - Runtime error: code executes but crashes
-   - Logic error: code executes but produces the wrong result
-   - Conceptual error: the learner misunderstands the underlying idea
-   - Architectural error: the solution may work but the design is poor,
-     fragile, inefficient, or difficult to maintain
+8. NEVER claim code works, passes tests, or is correct unless actual test
+   results in the context prove it.
 
-9. Reference the learner's actual code whenever code is available.
-   Point to specific patterns, lines, variables, functions, or decisions
-   instead of giving generic programming advice.
+9. Distinguish:
+   - syntax errors
+   - runtime errors
+   - logic errors
+   - conceptual misunderstandings
+   - architectural mistakes
 
-10. Encourage engineering thinking:
-    - ask what the code should do before how to write it
-    - discuss edge cases
-    - discuss trade-offs when relevant
-    - encourage documentation when useful
-    - explain WHY a change works, not only WHAT to type
+10. Reference the learner's actual code, error, and test results whenever
+    available.
 
 11. Adapt to the learner's skill level.
-    Beginners need clear explanations and smaller steps.
-    More advanced learners should receive deeper reasoning, trade-offs,
-    architecture discussion, and fewer hand-holding steps.
 
-12. If the learner is confused after an explanation, do NOT simply repeat
-    yourself. Explain the same idea using a different mental model, example,
-    analogy, or smaller concrete step.
+12. If the learner is confused, explain differently instead of repeating
+    the same question.
 
-13. If the learner asks "just give me the answer", do not automatically dump
-    the solution. First determine whether they have attempted the task.
-    If they have not, provide a strong clue or partial example.
-    If they have made multiple genuine attempts and explicitly request the
-    solution, provide it with a concise explanation.
+13. Be warm, concise, practical, and encouraging.
 
-14. Never shame the learner for mistakes. Treat mistakes as useful signals
-    about what concept needs clarification.
+14. Normal responses should usually be 2-5 sentences.
 
-15. Keep normal mentor responses concise:
-    usually 2-5 sentences.
-    Use a short code snippet when it directly helps.
-    Do not write essays unless the learner explicitly asks for a detailed
-    explanation.
+15. Do not turn the conversation into an interview. The mentor should feel
+    like a real conversation.
 
-CONVERSATION STYLE:
+IMPORTANT:
 
-- Be direct, warm, and encouraging.
-- Sound like a real senior engineer mentoring a junior engineer.
-- Do not sound robotic or like a questionnaire.
-- Do not repeat the same question in consecutive responses.
-- Do not ask a question merely to avoid giving useful guidance.
-- Every response should make measurable progress toward solving the task.
+When the learner gives a greeting or casual message, do not invent a
+technical task. Acknowledge them naturally and invite them to share what
+they are working on.
 
-WHEN THE LEARNER SAYS "HI" OR ASKS FOR GENERAL HELP:
+When the learner asks for help without enough context, ask for the specific
+thing they need help with rather than giving a generic programming lesson.
 
-Acknowledge them briefly, then use the available challenge context to give
-them a concrete starting point.
-
-Example:
-"Absolutely. Start by identifying what the function receives, what it needs
-to return, and where the current behavior differs from the requirement.
-Show me your current code and we'll work through the next step."
-
-WHEN THE LEARNER HAS CODE:
-
-Focus on their code immediately.
-
-Example:
-"Your retry loop is heading in the right direction. The missing piece is what
-happens after the first exception: you currently swallow the error without
-waiting or tracking the next attempt. What state do you need to maintain
-between retries?"
-
-WHEN THE LEARNER HAS AN ERROR:
-
-Explain the error first, then connect it to their code.
-
-WHEN THE LEARNER HAS TEST RESULTS:
-
-Use those results as evidence and do not infer success beyond what they show.
+When challenge context exists, use it immediately.
 """
 
 
@@ -143,6 +84,59 @@ class AiMentorNotConfiguredError(RuntimeError):
 
 class AiMentorProviderError(RuntimeError):
     pass
+
+
+def _normalize_message(message: str) -> str:
+    return re.sub(r"\s+", " ", message.strip().lower())
+
+
+def _handle_simple_conversation(message: str) -> str | None:
+    """
+    Handle conversational messages locally instead of wasting an LLM call.
+
+    This makes basic mentor interactions predictable and natural.
+    """
+    normalized = _normalize_message(message)
+
+    greetings = {
+        "hi",
+        "hello",
+        "hey",
+        "hey there",
+        "hiya",
+        "yo",
+        "sup",
+        "good morning",
+        "good afternoon",
+        "good evening",
+    }
+
+    help_requests = {
+        "help",
+        "please help",
+        "please guide me",
+        "guide me",
+        "i need help",
+        "i need some help",
+        "can you help me",
+        "help me",
+    }
+
+    if normalized in greetings:
+        return (
+            "Hey! I'm your FORGE mentor. What are you working on? "
+            "Send me the challenge, your code, or the error you're stuck on "
+            "and we'll work through it together."
+        )
+
+    if normalized in help_requests:
+        return (
+            "Absolutely. Send me the challenge or the part you're stuck on, "
+            "and include any code or error you're seeing. I'll guide you "
+            "through it step by step without just giving you the answer."
+        )
+
+    return None
 
 
 async def get_mentor_reply(
@@ -159,10 +153,25 @@ async def get_mentor_reply(
             "GROQ_API_KEY is not configured."
         )
 
+    # ---------------------------------------------------------
+    # Handle greetings/simple conversation locally.
+    # ---------------------------------------------------------
+
+    simple_reply = _handle_simple_conversation(user_message)
+
+    if simple_reply:
+        return simple_reply
+
+    # ---------------------------------------------------------
+    # Build technical context.
+    # ---------------------------------------------------------
+
     context_parts: list[str] = []
 
     if challenge_title:
-        context_parts.append(f"Challenge: {challenge_title}")
+        context_parts.append(
+            f"Challenge: {challenge_title}"
+        )
 
     if challenge_description:
         context_parts.append(
@@ -177,7 +186,8 @@ async def get_mentor_reply(
 
     if last_test_result_summary:
         context_parts.append(
-            f"Actual last test result: {last_test_result_summary}"
+            "Actual last test result: "
+            f"{last_test_result_summary}"
         )
     else:
         context_parts.append(
@@ -186,8 +196,10 @@ async def get_mentor_reply(
 
     context_block = "\n\n".join(context_parts)
 
-    # Normalize conversation history so malformed messages do not break
-    # the provider request.
+    # ---------------------------------------------------------
+    # Normalize conversation history.
+    # ---------------------------------------------------------
+
     history: list[dict[str, str]] = []
 
     for message in conversation_history:
@@ -221,12 +233,18 @@ async def get_mentor_reply(
         },
     ]
 
+    # ---------------------------------------------------------
+    # Groq request.
+    # ---------------------------------------------------------
+
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 GROQ_API_URL,
                 headers={
-                    "Authorization": f"Bearer {settings.groq_api_key}",
+                    "Authorization": (
+                        f"Bearer {settings.groq_api_key}"
+                    ),
                     "Content-Type": "application/json",
                 },
                 json={
@@ -236,10 +254,15 @@ async def get_mentor_reply(
                     "temperature": 0.4,
                 },
             )
+
     except httpx.RequestError as exc:
         raise AiMentorProviderError(
             f"Unable to reach Groq: {exc}"
         ) from exc
+
+    # ---------------------------------------------------------
+    # Provider errors.
+    # ---------------------------------------------------------
 
     if not response.is_success:
         try:
@@ -257,9 +280,12 @@ async def get_mentor_reply(
             f"{provider_message}"
         )
 
+    # ---------------------------------------------------------
+    # Parse response.
+    # ---------------------------------------------------------
+
     try:
         data = response.json()
-
         choices = data.get("choices", [])
 
         if not choices:
