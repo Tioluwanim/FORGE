@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.deps import get_current_user
+from app.core.uuid_utils import ensure_uuid
 from app.curriculum.roadmap_service import compute_roadmap
 from app.curriculum.schemas import ConceptDetail, ConceptSummary, RoadmapNode
 from app.db.models_curriculum import Concept
@@ -50,6 +51,7 @@ def get_roadmap(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
+    track_id = ensure_uuid(track_id)
     track = db.get(Track, track_id)
     if track is None or track.user_id != current_user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Track not found")
