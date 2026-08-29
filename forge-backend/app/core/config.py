@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +17,19 @@ class Settings(BaseSettings):
 
     # Database
     database_url: str = "postgresql+psycopg://forge:forge@localhost:5432/forge"
+
+    @field_validator("database_url", mode="before")
+    @classmethod
+    def normalize_database_url(cls, value: str | None) -> str | None:
+        if not isinstance(value, str):
+            return value
+
+        cleaned = value.strip()
+        if cleaned.startswith("postgresql+psycopg2://"):
+            return cleaned.replace("postgresql+psycopg2://", "postgresql+psycopg://", 1)
+        if cleaned.startswith("postgresql://") and not cleaned.startswith("postgresql+psycopg://"):
+            return cleaned.replace("postgresql://", "postgresql+psycopg://", 1)
+        return cleaned
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
