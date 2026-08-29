@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     debug: bool = True
 
     # Database
-    database_url: str = "postgresql+psycopg2://forge:forge@localhost:5432/forge"
+    database_url: str = "postgresql+psycopg://forge:forge@localhost:5432/forge"
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
