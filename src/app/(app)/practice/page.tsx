@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { LoadingState } from "@/components/motion/loading-state";
 import { curriculumApi, questionsApi, type QuestionOut } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 
-export default function PracticePage() {
+function PracticePageContent() {
   const { loading: authLoading } = useAuth();
   const searchParams = useSearchParams();
   const requestedConcept = searchParams.get("concept");
@@ -183,5 +183,13 @@ export default function PracticePage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function PracticePage() {
+  return (
+    <Suspense fallback={<LoadingState context="default" />}>
+      <PracticePageContent />
+    </Suspense>
   );
 }
