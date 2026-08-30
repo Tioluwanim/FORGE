@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
+from app.core.uuid_utils import ensure_uuid
 from app.db.models_challenges import Challenge, ExecutionResult, Submission, SubmissionStatus, TestCase
 from app.db.models_identity import Track, User
 from app.db.models_progress import Attempt, AttemptKind, AttemptResult
@@ -26,11 +27,12 @@ def submit_challenge(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SubmissionResultResponse:
+    challenge_id = ensure_uuid(challenge_id)
     challenge = db.get(Challenge, challenge_id)
     if challenge is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Challenge not found")
 
-    track = db.get(Track, payload.track_id)
+    track = db.get(Track, ensure_uuid(payload.track_id))
     if track is None or track.user_id != current_user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Track not found")
 

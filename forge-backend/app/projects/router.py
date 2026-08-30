@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.deps import get_current_user
+from app.core.uuid_utils import ensure_uuid
 from app.db.models_identity import User
 from app.db.models_projects import Project, UserProject, UserProjectMilestone, UserProjectStatus
 from app.db.session import get_db
@@ -53,6 +54,7 @@ def list_projects(
 def get_project(
     project_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> ProjectDetail:
+    project_id = ensure_uuid(project_id)
     project = db.query(Project).options(joinedload(Project.milestones)).filter(Project.id == project_id).first()
     if project is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")
@@ -73,6 +75,7 @@ def get_project(
 def start_project(
     project_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> None:
+    project_id = ensure_uuid(project_id)
     project = db.get(Project, project_id)
     if project is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Project not found")

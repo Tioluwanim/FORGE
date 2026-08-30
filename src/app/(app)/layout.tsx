@@ -5,12 +5,12 @@ import { CinematicShell } from "@/components/motion/cinematic-shell";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex">
+    <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <CommandPalette />
-      <div className="flex min-h-screen flex-1 flex-col">
+      <div className="flex h-screen flex-1 flex-col overflow-hidden">
         <Topbar />
-        <main className="flex-1 p-8">
+        <main className="flex-1 overflow-y-auto p-8">
           <CinematicShell>{children}</CinematicShell>
         </main>
       </div>

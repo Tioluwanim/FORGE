@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
+from app.core.uuid_utils import ensure_uuid
 from app.db.models_identity import User
 from app.db.models_platform import Incident, UserIncident
 from app.db.session import get_db
@@ -42,6 +43,7 @@ def list_incidents(db: Session = Depends(get_db)) -> list[IncidentSummary]:
 
 @router.get("/{incident_id}", response_model=IncidentDetail)
 def get_incident(incident_id: str, db: Session = Depends(get_db)) -> IncidentDetail:
+    incident_id = ensure_uuid(incident_id)
     incident = db.get(Incident, incident_id)
     if incident is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Incident not found")
@@ -57,6 +59,7 @@ def submit_diagnosis(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> DiagnosisResult:
+    incident_id = ensure_uuid(incident_id)
     incident = db.get(Incident, incident_id)
     if incident is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Incident not found")

@@ -82,7 +82,9 @@ const NAV: NavItem[] = [
 export function Sidebar() {
   const pathname = usePathname();
   const activeHref = pathname ?? "/dashboard";
+
   const [collapsed, setCollapsed] = useState(false);
+
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     Learn: true,
     Lab: false,
@@ -92,8 +94,8 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "flex h-screen flex-col border-r border-hairline bg-surface transition-[width] duration-200",
-        collapsed ? "w-16" : "w-64"
+        "flex h-screen shrink-0 flex-col border-r border-hairline bg-surface transition-[width] duration-200",
+        collapsed ? "w-16" : "w-64",
       )}
     >
       <div className="flex h-14 items-center justify-between border-b border-hairline px-4">
@@ -102,13 +104,17 @@ export function Sidebar() {
             FORGE
           </span>
         )}
+
         <button
           onClick={() => setCollapsed((c) => !c)}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
           className="rounded p-1.5 text-text-muted hover:bg-elevated hover:text-text"
         >
           <ChevronsLeft
-            className={cn("h-4 w-4 transition-transform", collapsed && "rotate-180")}
+            className={cn(
+              "h-4 w-4 transition-transform",
+              collapsed && "rotate-180",
+            )}
           />
         </button>
       </div>
@@ -121,40 +127,52 @@ export function Sidebar() {
                 <div>
                   <button
                     onClick={() =>
-                      setOpenGroups((g) => ({ ...g, [item.label]: !g[item.label] }))
+                      setOpenGroups((g) => ({
+                        ...g,
+                        [item.label]: !g[item.label],
+                      }))
                     }
                     className="flex w-full items-center gap-3 rounded px-2.5 py-2 text-sm text-text-muted hover:bg-elevated hover:text-text"
                   >
                     <item.icon className="h-4 w-4 shrink-0" />
+
                     {!collapsed && (
                       <>
                         <span className="flex-1 text-left">{item.label}</span>
+
                         <ChevronDown
                           className={cn(
                             "h-3.5 w-3.5 transition-transform",
-                            openGroups[item.label] && "rotate-180"
+                            openGroups[item.label] && "rotate-180",
                           )}
                         />
                       </>
                     )}
                   </button>
+
                   {!collapsed && openGroups[item.label] && (
-                    <ul className="ml-4 flex flex-col gap-0.5 border-l border-hairline pl-3 py-1">
+                    <ul className="ml-4 flex flex-col gap-0.5 border-l border-hairline py-1 pl-3">
                       {item.children.map((child) => {
                         const active =
-                          activeHref === child.href || activeHref.startsWith(child.href + "/");
+                          activeHref === child.href ||
+                          activeHref.startsWith(`${child.href}/`);
+
                         return (
-                          <li key={child.label} className="relative">
+                          <li
+                            key={child.label}
+                            className="relative"
+                          >
                             {active && (
                               <span className="forge-seam absolute -left-3 top-0 h-full w-[2px]" />
                             )}
+
                             <a
                               href={child.href}
                               className={cn(
                                 "flex items-center gap-2.5 rounded px-2.5 py-1.5 text-sm",
                                 active
                                   ? "text-text"
-                                  : "text-text-muted hover:bg-elevated hover:text-text"
+                                  : "text-text-muted hover:bg-elevated hover:text-text",
                               )}
                             >
                               <child.icon className="h-3.5 w-3.5 shrink-0" />
@@ -169,19 +187,22 @@ export function Sidebar() {
               ) : (
                 (() => {
                   const active =
-                    activeHref === item.href || activeHref.startsWith(item.href + "/");
+                    activeHref === item.href ||
+                    activeHref.startsWith(`${item.href}/`);
+
                   return (
                     <div className="relative">
                       {active && (
                         <span className="forge-seam absolute left-0 top-0 h-full w-[2px] rounded-full" />
                       )}
+
                       <a
                         href={item.href}
                         className={cn(
                           "flex items-center gap-3 rounded px-2.5 py-2 text-sm",
                           active
                             ? "bg-elevated text-text"
-                            : "text-text-muted hover:bg-elevated hover:text-text"
+                            : "text-text-muted hover:bg-elevated hover:text-text",
                         )}
                       >
                         <item.icon className="h-4 w-4 shrink-0" />

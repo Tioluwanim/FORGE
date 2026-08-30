@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
+from app.core.uuid_utils import ensure_uuid
 from app.db.models_curriculum import Concept
 from app.db.models_identity import User
 from app.db.models_progress import Review, ReviewStage
@@ -43,6 +44,7 @@ def list_reviews(db: Session = Depends(get_db), current_user: User = Depends(get
 def complete_review(
     review_id: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)
 ) -> ReviewOut:
+    review_id = ensure_uuid(review_id)
     review = db.get(Review, review_id)
     if review is None or review.user_id != current_user.id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Review not found")

@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
+from app.core.uuid_utils import ensure_uuid
 from app.db.models_curriculum import Question
 from app.db.models_identity import User
 from app.db.models_progress import Attempt, AttemptKind, AttemptResult
@@ -32,6 +33,7 @@ class AnswerResult(BaseModel):
 
 @router.get("/by-concept/{concept_id}", response_model=list[QuestionOut])
 def questions_for_concept(concept_id: str, db: Session = Depends(get_db)) -> list[QuestionOut]:
+    concept_id = ensure_uuid(concept_id)
     questions = db.query(Question).filter(Question.concept_id == concept_id).all()
     out = []
     for q in questions:
@@ -51,6 +53,7 @@ def answer_question(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AnswerResult:
+    question_id = ensure_uuid(question_id)
     question = db.get(Question, question_id)
     if question is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Question not found")
