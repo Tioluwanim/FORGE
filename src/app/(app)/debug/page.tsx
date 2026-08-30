@@ -2,11 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { motion, animate, useMotionValue, useTransform } from "motion/react";
-import { Terminal } from "lucide-react";
+import { Terminal, ArrowRight, ListFilter } from "lucide-react";
 import { IncidentMetricsPanel, type IncidentMetric } from "@/components/lab/incident-metrics-panel";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Drawer } from "@/components/ui/drawer";
+import { useToast } from "@/components/ui/toast";
 import { Reveal } from "@/components/motion/reveal";
 import { LoadingState } from "@/components/motion/loading-state";
+import { ErrorState } from "@/components/motion/error-state";
 import { incidentsApi, type IncidentDetail } from "@/lib/api";
 
 function LatencyReadout({ toMs }: { toMs: number }) {
@@ -28,23 +32,40 @@ function parseMs(display: string): number {
 }
 
 export default function DebugPage() {
+  const toast = useToast();
+  const [incidentList, setIncidentList] = useState<{ id: string; title: string; difficulty: number }[]>([]);
   const [incidentId, setIncidentId] = useState<string | null>(null);
   const [incident, setIncident] = useState<IncidentDetail | null>(null);
   const [diagnosis, setDiagnosis] = useState("");
   const [result, setResult] = useState<{ is_correct: boolean; root_cause_md: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  function loadList() {
+    setLoadError(false);
+    incidentsApi
+      .list()
+      .then((incidents) => {
+        setIncidentList(incidents);
+        if (incidents[0]) setIncidentId(incidents[0].id);
+      })
+      .catch(() => setLoadError(true));
+  }
 
   useEffect(() => {
-    incidentsApi.list().then((incidents) => {
-      if (incidents[0]) setIncidentId(incidents[0].id);
-    });
+    loadList();
   }, []);
 
   useEffect(() => {
     if (!incidentId) return;
-    incidentsApi.get(incidentId).then(setIncident);
+    setIncident(null);
+    setResult(null);
+    setDiagnosis("");
+    incidentsApi.get(incidentId).then(setIncident).catch(() => setLoadError(true));
   }, [incidentId]);
 
+  if (loadError) return <ErrorState message="Couldn't load incidents." onRetry={loadList} />;
   if (!incident) return <LoadingState context="default" />;
 
   const metrics: IncidentMetric[] = Object.entries(incident.metrics).map(([label, m]) => ({
@@ -54,6 +75,7 @@ export default function DebugPage() {
     severity: m.severity as IncidentMetric["severity"],
   }));
   const apiLatency = incident.metrics["api_latency"];
+  const nextIncident = incidentList.find((i) => i.id !== incidentId);
 
   async function submitDiagnosis() {
     if (!incidentId || !diagnosis.trim()) return;
@@ -61,94 +83,167 @@ export default function DebugPage() {
     try {
       const res = await incidentsApi.diagnose(incidentId, diagnosis);
       setResult(res);
+    } catch {
+      toast("Couldn't submit your diagnosis — try again.", "error");
     } finally {
       setSubmitting(false);
     }
   }
 
-  return (
-    <div className="mx-auto max-w-3xl">
-      <Reveal>
-        <div className="flex items-center gap-2">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-signal-fail" />
-          <p className="font-mono text-xs uppercase tracking-widest text-signal-fail">
-            Incident Active
-          </p>
-        </div>
-        <h1 className="mt-2 font-display text-2xl font-medium text-text">
-          {incident.title}
-        </h1>
-      </Reveal>
+  function selectIncident(id: string) {
+    setIncidentId(id);
+    setPickerOpen(false);
+  }
 
-      {apiLatency && (
-        <Reveal delay={0.1} className="mt-6">
-          <div className="rounded-md border border-hairline bg-surface p-6 text-center">
-            <p className="font-mono text-[10px] uppercase tracking-wide text-text-faint">
-              API Latency (live)
-            </p>
-            <div className="mt-2">
-              <LatencyReadout toMs={parseMs(apiLatency.to)} />
+  const incidentPickerList = (
+    <div className="space-y-1.5">
+      {incidentList.map((inc) => (
+        <button
+          key={inc.id}
+          onClick={() => selectIncident(inc.id)}
+          className={`flex w-full items-center justify-between rounded-md border px-3 py-2.5 text-left text-xs ${
+            inc.id === incidentId
+              ? "border-ember bg-ember/[0.06] text-text"
+              : "border-hairline bg-surface text-text-muted hover:border-text-faint"
+          }`}
+        >
+          <span className="truncate">{inc.title}</span>
+          <Badge tone="neutral" className="ml-2 shrink-0">
+            {inc.difficulty}
+          </Badge>
+        </button>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="mx-auto flex max-w-5xl flex-col gap-8 sm:flex-row">
+      <div className="flex-1">
+        <Reveal>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-signal-fail" />
+              <p className="font-mono text-xs uppercase tracking-widest text-signal-fail">
+                Incident Active
+              </p>
+            </div>
+            <button
+              onClick={() => setPickerOpen(true)}
+              className="flex items-center gap-1.5 rounded-md border border-hairline px-2.5 py-1 text-xs text-text-muted hover:border-text-faint sm:hidden"
+            >
+              <ListFilter className="h-3.5 w-3.5" />
+              Incidents
+            </button>
+          </div>
+          <h1 className="mt-2 font-display text-2xl font-medium text-text">
+            {incident.title}
+          </h1>
+        </Reveal>
+
+        {apiLatency && (
+          <Reveal delay={0.1} className="mt-6">
+            <div className="rounded-md border border-hairline bg-surface p-6 text-center">
+              <p className="font-mono text-[10px] uppercase tracking-wide text-text-faint">
+                API Latency (live)
+              </p>
+              <div className="mt-2">
+                <LatencyReadout toMs={parseMs(apiLatency.to)} />
+              </div>
+            </div>
+          </Reveal>
+        )}
+
+        <Reveal delay={0.2} className="mt-5">
+          <IncidentMetricsPanel incidentId={incident.id} metrics={metrics} />
+        </Reveal>
+
+        <Reveal delay={0.3} className="mt-5">
+          <div className="rounded-md border border-hairline bg-[#0D0D0F] p-4">
+            <div className="flex items-center gap-2 border-b border-hairline pb-2">
+              <Terminal className="h-3.5 w-3.5 text-text-faint" />
+              <span className="font-mono text-xs uppercase tracking-wide text-text-faint">
+                Logs
+              </span>
+            </div>
+            <div className="mt-3 space-y-1.5 font-mono text-xs text-text-muted">
+              {incident.logs.lines.map((log, i) => (
+                <motion.p
+                  key={i}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 + i * 0.15 }}
+                >
+                  {log}
+                </motion.p>
+              ))}
             </div>
           </div>
         </Reveal>
-      )}
 
-      <Reveal delay={0.2} className="mt-5">
-        <IncidentMetricsPanel incidentId={incident.id} metrics={metrics} />
-      </Reveal>
+        {result ? (
+          <>
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`mt-6 rounded-md border px-4 py-3 text-sm ${
+                result.is_correct
+                  ? "border-signal-pass/30 bg-signal-pass/[0.06] text-text"
+                  : "border-signal-warn/30 bg-signal-warn/[0.06] text-text"
+              }`}
+            >
+              <p className="font-medium">{result.is_correct ? "Correct diagnosis." : "Not quite — here's the root cause:"}</p>
+              <p className="mt-1.5 text-text-muted">{result.root_cause_md}</p>
+              {!result.is_correct && (
+                <a
+                  href={`/ai-mentor?prefill=${encodeURIComponent(
+                    `I'm working through the "${incident.title}" incident and misdiagnosed it as "${diagnosis}" — the real root cause was: ${result.root_cause_md}. Can you help me understand why I missed it?`
+                  )}`}
+                  className="mt-2 inline-block text-sm text-ember hover:underline"
+                >
+                  Ask mentor →
+                </a>
+              )}
+            </motion.div>
+            {nextIncident && (
+              <div className="mt-4 flex items-center justify-between rounded-md border border-hairline bg-surface px-4 py-3">
+                <div>
+                  <p className="font-mono text-[10px] uppercase tracking-wide text-text-faint">Next incident</p>
+                  <p className="mt-0.5 text-sm text-text">{nextIncident.title}</p>
+                </div>
+                <Button variant="primary" size="sm" onClick={() => setIncidentId(nextIncident.id)}>
+                  Continue <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <textarea
+              value={diagnosis}
+              onChange={(e) => setDiagnosis(e.target.value)}
+              rows={3}
+              placeholder="What's causing this incident?"
+              className="mt-6 w-full rounded-md border border-hairline bg-surface px-4 py-3 text-sm text-text placeholder:text-text-faint focus:outline-none focus:border-ember"
+            />
+            <div className="mt-3 flex justify-end">
+              <Button variant="primary" onClick={submitDiagnosis} disabled={submitting || !diagnosis.trim()}>
+                {submitting ? "Submitting…" : "Submit diagnosis"}
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
 
-      <Reveal delay={0.3} className="mt-5">
-        <div className="rounded-md border border-hairline bg-[#0D0D0F] p-4">
-          <div className="flex items-center gap-2 border-b border-hairline pb-2">
-            <Terminal className="h-3.5 w-3.5 text-text-faint" />
-            <span className="font-mono text-xs uppercase tracking-wide text-text-faint">
-              Logs
-            </span>
-          </div>
-          <div className="mt-3 space-y-1.5 font-mono text-xs text-text-muted">
-            {incident.logs.lines.map((log, i) => (
-              <motion.p
-                key={i}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 + i * 0.15 }}
-              >
-                {log}
-              </motion.p>
-            ))}
-          </div>
-        </div>
-      </Reveal>
+      <div className="hidden w-56 shrink-0 sm:block">
+        <p className="font-mono text-[10px] uppercase tracking-wide text-text-faint">
+          Incidents
+        </p>
+        <div className="mt-3">{incidentPickerList}</div>
+      </div>
 
-      {result ? (
-        <motion.div
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className={`mt-6 rounded-md border px-4 py-3 text-sm ${
-            result.is_correct
-              ? "border-signal-pass/30 bg-signal-pass/[0.06] text-text"
-              : "border-signal-warn/30 bg-signal-warn/[0.06] text-text"
-          }`}
-        >
-          <p className="font-medium">{result.is_correct ? "Correct diagnosis." : "Not quite — here's the root cause:"}</p>
-          <p className="mt-1.5 text-text-muted">{result.root_cause_md}</p>
-        </motion.div>
-      ) : (
-        <>
-          <textarea
-            value={diagnosis}
-            onChange={(e) => setDiagnosis(e.target.value)}
-            rows={3}
-            placeholder="What's causing this incident?"
-            className="mt-6 w-full rounded-md border border-hairline bg-surface px-4 py-3 text-sm text-text placeholder:text-text-faint focus:outline-none focus:border-ember"
-          />
-          <div className="mt-3 flex justify-end">
-            <Button variant="primary" onClick={submitDiagnosis} disabled={submitting || !diagnosis.trim()}>
-              {submitting ? "Submitting…" : "Submit diagnosis"}
-            </Button>
-          </div>
-        </>
-      )}
+      <Drawer open={pickerOpen} onClose={() => setPickerOpen(false)} title="Incidents">
+        {incidentPickerList}
+      </Drawer>
     </div>
   );
 }

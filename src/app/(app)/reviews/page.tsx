@@ -6,15 +6,25 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Stagger, StaggerItem } from "@/components/motion/reveal";
 import { LoadingState } from "@/components/motion/loading-state";
+import { ErrorState } from "@/components/motion/error-state";
+import { useToast } from "@/components/ui/toast";
 import { reviewsApi, type ReviewOut } from "@/lib/api";
 
 export default function ReviewsPage() {
+  const toast = useToast();
   const [reviews, setReviews] = useState<ReviewOut[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [completing, setCompleting] = useState<string | null>(null);
 
+  function load() {
+    setLoading(true);
+    setLoadError(false);
+    reviewsApi.list().then(setReviews).catch(() => setLoadError(true)).finally(() => setLoading(false));
+  }
+
   useEffect(() => {
-    reviewsApi.list().then(setReviews).finally(() => setLoading(false));
+    load();
   }, []);
 
   async function handleComplete(id: string) {
@@ -22,12 +32,15 @@ export default function ReviewsPage() {
     try {
       const updated = await reviewsApi.complete(id);
       setReviews((rs) => rs.map((r) => (r.id === id ? updated : r)));
+    } catch {
+      toast("Couldn't mark that as reviewed — try again.", "error");
     } finally {
       setCompleting(null);
     }
   }
 
   if (loading) return <LoadingState context="default" />;
+  if (loadError) return <ErrorState message="Couldn't load your reviews." onRetry={load} />;
 
   const dueToday = reviews.filter((r) => r.due_in === "Today");
 

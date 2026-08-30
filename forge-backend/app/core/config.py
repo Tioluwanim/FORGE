@@ -1,14 +1,10 @@
 from functools import lru_cache
 
-from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        extra="ignore",
-    )
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     # App
     app_name: str = "FORGE API"
@@ -16,20 +12,7 @@ class Settings(BaseSettings):
     debug: bool = True
 
     # Database
-    database_url: str = "postgresql+psycopg://forge:forge@localhost:5432/forge"
-
-    @field_validator("database_url", mode="before")
-    @classmethod
-    def normalize_database_url(cls, value: str | None) -> str | None:
-        if not isinstance(value, str):
-            return value
-
-        cleaned = value.strip()
-        if cleaned.startswith("postgresql+psycopg2://"):
-            return cleaned.replace("postgresql+psycopg2://", "postgresql+psycopg://", 1)
-        if cleaned.startswith("postgresql://") and not cleaned.startswith("postgresql+psycopg://"):
-            return cleaned.replace("postgresql://", "postgresql+psycopg://", 1)
-        return cleaned
+    database_url: str = "postgresql+psycopg2://forge:forge@localhost:5432/forge"
 
     # Redis
     redis_url: str = "redis://localhost:6379/0"
@@ -45,10 +28,9 @@ class Settings(BaseSettings):
     github_client_id: str | None = None
     github_client_secret: str | None = None
 
-    # AI Mentor — Groq
-    # Populate via .env — never commit a real key.
+    # AI Mentor — set in .env, never commit a real key.
     groq_api_key: str | None = None
-    groq_model: str = "llama-3.3-70b-versatile"
+    groq_model: str = "openai/gpt-oss-120b"  # check console.groq.com/docs/models — Groq deprecates models periodically
 
     # CORS
     cors_origins: list[str] = ["http://localhost:3000"]
@@ -57,6 +39,24 @@ class Settings(BaseSettings):
     # submissions router will refuse to run real code until this is wired
     # to an actual isolated worker per forge-architecture-plan.md §7.
     sandbox_enabled: bool = False
+
+    # Docker daemon the worker talks to. Locally this is the default socket
+    # (docker-py picks it up automatically when unset). In production this
+    # MUST point at a real Docker-capable host — Render's standard web/worker
+    # services do not expose a local Docker socket. Use Docker's remote TLS
+    # API: tcp://your-docker-host:2376, with tls_* below pointing at the
+    # client cert/key/ca generated for that host. See
+    # app/submissions/sandbox_image/BUILD.md for setup.
+    docker_host: str | None = None
+    docker_tls_cert_path: str | None = None
+    docker_tls_key_path: str | None = None
+    docker_tls_ca_path: str | None = None
+
+    sandbox_image: str = "forge-python-sandbox:latest"
+    sandbox_cpu_limit: float = 1.0
+    sandbox_memory_mb: int = 256
+    sandbox_pids_limit: int = 64
+    sandbox_timeout_seconds: int = 10
 
 
 @lru_cache

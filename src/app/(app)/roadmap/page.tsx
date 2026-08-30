@@ -1,38 +1,61 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ArrowDown } from "lucide-react";
 import { RoadmapNode } from "@/components/lab/roadmap-node";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/motion/loading-state";
+import { ErrorState } from "@/components/motion/error-state";
 import { useAuth } from "@/lib/use-auth";
+import { resolveContinueHref } from "@/lib/next-action";
 import { curriculumApi, type RoadmapNode as RoadmapNodeData } from "@/lib/api";
 
 export default function RoadmapPage() {
+  const router = useRouter();
   const { primaryTrack, loading: authLoading } = useAuth();
   const [nodes, setNodes] = useState<RoadmapNodeData[]>([]);
   const [loadingRoadmap, setLoadingRoadmap] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
+  const [continuing, setContinuing] = useState(false);
 
-  useEffect(() => {
-    if (authLoading || !primaryTrack) return;
+  function load() {
+    if (!primaryTrack) return;
+    setLoadingRoadmap(true);
+    setLoadError(false);
     curriculumApi
       .roadmap(primaryTrack.id)
       .then((data) => {
         setNodes(data);
         setSelected(data.length ? 0 : null);
       })
+      .catch(() => setLoadError(true))
       .finally(() => setLoadingRoadmap(false));
+  }
+
+  useEffect(() => {
+    if (authLoading || !primaryTrack) return;
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, primaryTrack]);
 
   if (authLoading || loadingRoadmap) return <LoadingState context="documentation" />;
+  if (loadError) return <ErrorState message="Couldn't load your roadmap." onRetry={load} />;
+
+  async function handleContinue() {
+    if (!node) return;
+    setContinuing(true);
+    const href = await resolveContinueHref(node.concept_id, node.title);
+    router.push(href);
+  }
 
   const node = selected !== null ? nodes[selected] : null;
 
   return (
-    <div className="mx-auto flex max-w-5xl gap-8">
+    <div className="mx-auto flex max-w-5xl flex-col gap-8 sm:flex-row">
       <div className="flex-1">
         <p className="font-mono text-xs uppercase tracking-widest text-ember">
           {primaryTrack?.label ?? "Roadmap"}
@@ -41,7 +64,7 @@ export default function RoadmapPage() {
 
         {nodes.length === 0 ? (
           <p className="mt-6 text-sm text-text-faint">
-            No curriculum seeded for this track yet — run the backend seed script.
+            Your roadmap for this track isn&rsquo;t ready yet — check back soon.
           </p>
         ) : (
           <div className="mt-8 flex flex-col items-start">
@@ -64,7 +87,7 @@ export default function RoadmapPage() {
         )}
       </div>
 
-      <div className="sticky top-8 h-fit w-80 shrink-0">
+      <div className="w-full sm:sticky sm:top-8 sm:h-fit sm:w-80 sm:shrink-0">
         {node ? (
           <Card>
             <CardHeader>
@@ -95,8 +118,13 @@ export default function RoadmapPage() {
                   </div>
                 </div>
               )}
-              <Button variant="primary" className="w-full justify-center" disabled={node.status === "locked"}>
-                {node.status === "mastered" ? "Review" : "Continue"}
+              <Button
+                variant="primary"
+                className="w-full justify-center"
+                disabled={node.status === "locked" || continuing}
+                onClick={handleContinue}
+              >
+                {continuing ? "Loading…" : node.status === "mastered" ? "Review" : "Continue"}
               </Button>
             </CardContent>
           </Card>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
-import { tracksApi } from "@/lib/api";
+import { tracksApi, usersApi } from "@/lib/api";
 import { ApiError } from "@/lib/api-client";
 
 const SKILL_LEVELS = [
@@ -34,7 +34,7 @@ export default function OnboardingPage() {
 
   async function finish() {
     const language = sessionStorage.getItem("forge_selected_language");
-    if (!language || !skill) {
+    if (!language || !skill || !goal) {
       setError("Missing language selection — go back and pick one.");
       return;
     }
@@ -42,6 +42,9 @@ export default function OnboardingPage() {
     setError(null);
     try {
       await tracksApi.create(language, skill, true);
+      // The goal picked above previously wasn't sent anywhere — persist it
+      // to the profile so it isn't silently discarded.
+      await usersApi.updateProfile({ goal }).catch(() => {});
       sessionStorage.removeItem("forge_selected_language");
       router.push("/dashboard");
     } catch (err) {

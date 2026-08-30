@@ -108,14 +108,43 @@ export interface SubmissionResultResponse {
   tests_total: number;
   duration_ms: number;
   results: TestCaseResult[];
+  mode?: string | null; // "sandboxed_execution" | "dev_heuristic_no_execution"
+}
+export interface SubmissionAck {
+  id: string;
+  status: string;
 }
 
 export const challengesApi = {
   list: () => api.get<{ id: string; title: string; difficulty: number; concept: string | null }[]>("/challenges"),
   get: (id: string) => api.get<ChallengeDetail>(`/challenges/${id}`),
+  /** Enqueues a submission — returns immediately with status "queued". Poll `getSubmission` for the result. */
   submit: (challengeId: string, trackId: string, files: Record<string, string>) =>
-    api.post<SubmissionResultResponse>(`/submissions/challenges/${challengeId}`, { track_id: trackId, files }),
+    api.post<SubmissionAck>(`/submissions/challenges/${challengeId}`, { track_id: trackId, files }),
+  getSubmission: (submissionId: string) =>
+    api.get<SubmissionResultResponse>(`/submissions/${submissionId}`),
 };
+
+const TERMINAL_STATUSES = new Set(["passed", "failed", "error", "timeout"]);
+
+/**
+ * Polls a submission until it leaves "queued"/"running". The worker that
+ * actually executes the code may be on a completely different machine (see
+ * the backend's sandbox_image/BUILD.md), so this has no fixed latency
+ * assumption — it just keeps asking, with a gentle backoff, up to `maxWaitMs`.
+ */
+export async function pollSubmission(
+  submissionId: string,
+  { intervalMs = 700, maxWaitMs = 30000 }: { intervalMs?: number; maxWaitMs?: number } = {}
+): Promise<SubmissionResultResponse> {
+  const start = Date.now();
+  while (Date.now() - start < maxWaitMs) {
+    const result = await challengesApi.getSubmission(submissionId);
+    if (TERMINAL_STATUSES.has(result.status)) return result;
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  throw new Error("Timed out waiting for the sandbox to finish — it may still complete; check back shortly.");
+}
 
 // --- Projects ------------------------------------------------------------
 export interface ProjectSummary {

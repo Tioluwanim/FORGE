@@ -1,0 +1,16 @@
+# The worker PROCESS's own image — not to be confused with
+# submissions/sandbox_image/Dockerfile, which is the image learner code
+# executes inside. This one just needs Python + our dependencies + the
+# Docker socket mounted at runtime (via docker-compose.yml) to talk to the
+# host's Docker daemon.
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+CMD ["python", "-m", "app.submissions.worker"]

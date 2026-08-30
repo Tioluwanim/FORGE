@@ -1,10 +1,16 @@
 # FORGE — Backend
 
-FastAPI backend implementing Phases 1-4 of `forge-architecture-plan.md`:
+FastAPI backend implementing Phases 1-5 of `forge-architecture-plan.md`:
 auth, tracks, curriculum, questions, challenges, projects, mastery/progress,
-reviews, and the debugging lab — plus a real AI Mentor integration. Phase 5
-(the actual sandboxed code-execution worker) is explicitly **not** built —
-see `app/submissions/sandbox.py`'s docstring for why, and what to build.
+reviews, the debugging lab, a real AI Mentor integration, and — as of Phase
+5 — **real sandboxed code execution**: a Redis-backed job queue, a separate
+worker process, and an actual Docker-isolated runner with network
+disabled, resource limits, a non-root user, and a read-only root filesystem.
+
+**Read `app/submissions/sandbox_image/BUILD.md` before deploying this.**
+Real code execution will not run as-is on Render's standard services —
+they don't expose a Docker daemon. That file explains why and gives three
+concrete options.
 
 ## Setup
 
@@ -15,55 +21,74 @@ pip install -r requirements.txt
 
 cp .env.example .env   # then fill in SECRET_KEY at minimum
 
-docker compose up -d   # postgres + redis
+docker compose up -d   # postgres + redis + a local worker (for testing execution)
 
 alembic revision --autogenerate -m "initial schema"
 alembic upgrade head
 
-python -m scripts.seed   # populates real starter content
+python -m scripts.seed   # populates real starter content, including two
+                          # challenges with real (not heuristic) test harnesses
 
 uvicorn app.main:app --reload
 ```
 
+In a second terminal, run the worker (only needed if you're testing real
+execution — see below):
+
+```bash
+docker build -t forge-python-sandbox:latest -f app/submissions/sandbox_image/Dockerfile app/submissions/sandbox_image
+python -m app.submissions.worker
+```
+
 Then open http://localhost:8000/docs for the interactive API explorer.
 
-> **This has not been run in the sandbox that generated it.** `pip install`
-> was blocked there the same way `npm install` was for the frontend
-> (registry access returned 403 despite being an allowed host). Every file
-> was hand-written and syntax-checked with `py_compile`, and the trickier
-> pieces (SQLAlchemy 2.0 `Mapped[...]` relationship typing, Alembic's
-> autogenerate wiring) were written carefully, but budget time to fix
-> whatever `alembic revision --autogenerate` and the first `uvicorn` boot
-> surface — model relationship typos are the most likely culprit if
-> anything breaks.
+> **This has not been run in the sandbox that generated it** — same caveat
+> as always, `pip install` is blocked in this environment. What I *could*
+> do: extract the exact test-harness strings from `scripts/seed.py` and
+> actually execute them locally (via plain `subprocess`, no Docker) against
+> both correct and deliberately broken solutions, to verify the harness
+> logic and result-parsing are correct. That caught two real bugs before
+> they shipped — see the comments in `scripts/seed.py` around
+> `n_plus_one_harness` for what they were (the `Order`/`Customer` classes
+> weren't reachable from the learner's code, and the starter code's own
+> `db: Session` type hint would have crashed at import time for every
+> learner). The Docker-specific parts (`docker_client.py`,
+> `python_runner.py`'s container calls) are correct against the `docker-py`
+> API as documented, but genuinely untested end-to-end since there's no
+> Docker daemon in this environment.
 
 ## What's real
 
-- **Auth** — signup/login with Argon2 password hashing, JWT bearer tokens. OAuth endpoints exist but correctly return `501` until you add real Google/GitHub client credentials (`app/auth/router.py`'s docstring explains why this isn't stubbed further).
-- **Tracks** — per-language progress isolation, exactly matching the frontend's Python 72% / JS 34% / Java "not started" display.
-- **Curriculum** — modules → lessons → concepts, with a real roadmap status algorithm (`app/curriculum/roadmap_service.py`) that derives mastered/learning/weak/locked/recommended/review_required from actual mastery snapshots and prerequisites — not hardcoded per spec §51 ("never confuse activity with learning").
-- **Mastery** — computed from raw `Attempt` rows via `app/mastery/service.py`, matching the architecture plan's derived-snapshot design (§23). Recomputed synchronously after each submission for now; should move to a background worker before real traffic (see that file's docstring).
-- **AI Mentor** — a real Anthropic API integration (`app/ai/service.py`) with a system prompt encoding the AI Tutor Rules from spec §18 (hints before answers, never claim tests passed, distinguish syntax from architectural mistakes). Returns a clear `501` if `ANTHROPIC_API_KEY` isn't set — it does not fake a response.
-- **Debugging Lab** — incident metrics/logs are real fixture data, diagnosis grading is deterministic keyword matching.
+- **Auth** — signup/login with Argon2 password hashing, JWT bearer tokens. OAuth endpoints exist but correctly return `501` until you add real Google/GitHub client credentials.
+- **Tracks** — per-language progress isolation.
+- **Curriculum** — modules → lessons → concepts, with a real roadmap status algorithm (`app/curriculum/roadmap_service.py`) that derives mastered/learning/weak/locked/recommended/review_required from actual mastery snapshots and prerequisites.
+- **Mastery** — computed from raw `Attempt` rows via `app/mastery/service.py`.
+- **AI Mentor** — a real Groq API integration with the AI Tutor Rules from spec §18 baked into its system prompt. Returns a clear `501` if `GROQ_API_KEY` isn't set.
+- **Debugging Lab** — real fixture data, deterministic keyword-based diagnosis grading.
 - **Reviews** — real spaced-repetition stage advancement (day0→2→7→21→45).
-- **System Design Lab** — canvas state persists per-user, with real (rule-based, not LLM) architecture validation in `app/system_design/router.py`.
-- **Settings** — profile (display name/bio/goal), preferences (reduced motion/email digest/review reminders, stored as JSON on the profile), and password change are all real.
+- **System Design Lab** — canvas state persists per-user, with real rule-based architecture validation.
+- **Settings** — profile, preferences, and password change are all real.
+- **Code execution (Phase 5, new)** — `POST /submissions/challenges/{id}` enqueues a job and returns `202` immediately; `GET /submissions/{id}` polls for the result. The worker (`app/submissions/worker.py`, a separate process) picks the job up and, when `SANDBOX_ENABLED=true`, runs the learner's code inside an isolated Docker container (`app/submissions/runners/python_runner.py`): network disabled, CPU/memory/pids capped, non-root user, read-only root filesystem, tmpfs scratch space, all capabilities dropped, wall-clock timeout enforced from outside the container. Two seeded challenges (`async-retry`, `n-plus-one`) have real `test_harness_code` that actually imports and calls the submitted function.
 
 ## What's explicitly stubbed, and why
 
-- **Code execution** (`app/submissions/sandbox.py`) — does not execute learner code at all. It does heuristic substring-matching against submitted source so the rest of the product has real data to render, and is loud about being non-executing in its own docstring and return payload. Building the real thing (ephemeral Docker containers, network isolation, resource limits) needs container infrastructure this repo doesn't provision — see `forge-architecture-plan.md` §7 for the actual design when you're ready to build it. **Do not "simplify" this by adding `exec()` or `subprocess.run()` on raw submitted code** — that's the exact vulnerability the isolation boundary exists to prevent.
-- **OAuth** — `/auth/oauth/{provider}/authorize` returns 501 until you register real Google/GitHub apps and implement the authorization-code exchange.
-- **Background workers** — mastery recompute and review scheduling run synchronously inline for now. `requirements.txt` includes Celery/Redis for when that changes.
+- **The default execution path is still the heuristic grader** (`SANDBOX_ENABLED=false` by default, in `app/submissions/sandbox.py`). Real execution only activates once you've set up a Docker-capable host and pointed `DOCKER_HOST` at it — see `sandbox_image/BUILD.md`. The app keeps working today either way; you opt into real execution when the infrastructure exists.
+- **OAuth** — `/auth/oauth/{provider}/authorize` returns 501 until you register real Google/GitHub apps.
+- **Mastery recompute and review scheduling** still run synchronously inline rather than as background jobs.
 
 ## Structure
 
-Matches `forge-architecture-plan.md` §2.1 — one directory per bounded module
-(`auth`, `tracks`, `curriculum`, `challenges`, `submissions`, `projects`,
-`mastery`, `progress`, `reviews`, `production_labs`, `ai`), each owning its
-own router/schemas/service. `app/db/` holds every SQLAlchemy model, split
-into files by the schema groupings from the plan's §4 but all sharing one
-`Base` so Alembic autogenerate sees the whole picture via `app/db/models.py`.
+Matches `forge-architecture-plan.md` §2.1 — one directory per bounded module.
+`app/submissions/` is the security-critical one: `sandbox.py` is the
+dispatch point, `runners/` holds the language-agnostic execution interface
+(`base.py`, per spec §55) and the real Docker implementation
+(`python_runner.py`), `docker_client.py` handles local vs. remote Docker
+connections, `queue.py`/`tasks.py`/`worker.py` are the async job pipeline,
+and `sandbox_image/` is the actual container image + the deployment guide.
 
-## Next step
+## Deploying the worker on Render
 
-The frontend (`forge-frontend`) is now fully wired to every endpoint here except `/production` (deliberately left as a client-only simulation — see its own README). Point it at this backend by setting `NEXT_PUBLIC_API_URL` in the frontend's `.env.local`, run both, and the seed data should render end to end.
+`render.yaml` provisions both the web service and a background worker.
+Leave `SANDBOX_ENABLED=false` until you've set up a Docker host per
+`sandbox_image/BUILD.md` — the worker runs fine on Render either way; it
+just falls back to the heuristic grader without a reachable Docker daemon.

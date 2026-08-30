@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LoadingState } from "@/components/motion/loading-state";
+import { ErrorState } from "@/components/motion/error-state";
 import { authApi, type MeResponse } from "@/lib/api";
 import { ApiError } from "@/lib/api-client";
 import { useAuth } from "@/lib/use-auth";
@@ -18,10 +19,16 @@ export default function SettingsSecurityPage() {
   const [changing, setChanging] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<{ text: string; error: boolean } | null>(null);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  function load() {
+    setLoadError(false);
+    authApi.me().then(setMe).catch(() => setLoadError(true));
+  }
 
   useEffect(() => {
     if (authLoading) return;
-    authApi.me().then(setMe);
+    load();
   }, [authLoading]);
 
   async function changePassword() {
@@ -43,7 +50,10 @@ export default function SettingsSecurityPage() {
     }
   }
 
-  if (!me || authLoading) return <LoadingState context="default" />;
+  if (!me || authLoading) {
+    if (loadError) return <ErrorState message="Couldn't load account security." onRetry={load} />;
+    return <LoadingState context="default" />;
+  }
 
   return (
     <div className="space-y-4">

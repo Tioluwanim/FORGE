@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { motion, useMotionValue, useSpring, useTransform, useReducedMotion } from "motion/react";
@@ -14,6 +14,7 @@ import { ScrollStory } from "@/components/motion/scroll-story";
 import { ArchitectureDiagram } from "@/components/motion/architecture-diagram";
 import { InteractiveShowcase } from "@/components/marketing/interactive-showcase";
 import { motionTokens } from "@/lib/motion-tokens";
+import { cn } from "@/lib/cn";
 
 // R3F touches WebGL — dynamically imported, client-only, and mounted nowhere
 // else in the app (spec §5, §41).
@@ -23,9 +24,30 @@ const HeroScene = dynamic(
 );
 
 const LANGUAGE_TRACKS = [
-  { name: "Python", stack: ["FastAPI", "PostgreSQL", "Redis", "Docker"], accent: "border-signal-info/40", glow: "#60A5FA" },
-  { name: "JavaScript", stack: ["Node.js", "PostgreSQL", "Redis", "Docker"], accent: "border-signal-warn/40", glow: "#FBBF24" },
-  { name: "Java", stack: ["Spring Boot", "PostgreSQL", "Redis", "Docker"], accent: "border-signal-pass/40", glow: "#4ADE80" },
+  {
+    name: "Python",
+    focus: "Backend Engineering",
+    blurb: "Build APIs, services, and production systems.",
+    stack: ["FastAPI", "PostgreSQL", "Redis", "Docker"],
+    accent: "border-signal-info/40",
+    glow: "#60A5FA",
+  },
+  {
+    name: "JavaScript",
+    focus: "Full-Stack Engineering",
+    blurb: "Ship services and the interfaces that call them.",
+    stack: ["Node.js", "PostgreSQL", "Redis", "Docker"],
+    accent: "border-signal-warn/40",
+    glow: "#FBBF24",
+  },
+  {
+    name: "Java",
+    focus: "Enterprise Systems",
+    blurb: "Build the systems large organizations run on.",
+    stack: ["Spring Boot", "PostgreSQL", "Redis", "Docker"],
+    accent: "border-signal-pass/40",
+    glow: "#4ADE80",
+  },
 ];
 
 const SYSTEMS_ROW = ["API", "Database", "Cache", "Queue", "Worker", "Authentication", "Docker", "Observability"];
@@ -47,11 +69,11 @@ function Hero() {
   return (
     <section
       onPointerMove={handlePointerMove}
-      className="relative flex min-h-[92vh] flex-col items-center justify-center overflow-hidden px-6 text-center"
+      className="relative flex min-h-[90vh] flex-col items-center justify-center overflow-hidden px-6 text-center"
     >
       <GridBackground />
       <GlowField />
-      <ParticleField count={20} />
+      <ParticleField count={14} />
       {!reduceMotion && (
         <div className="absolute inset-0">
           <HeroScene />
@@ -62,46 +84,40 @@ function Hero() {
         style={reduceMotion ? undefined : { x: px, y: py }}
         className="relative flex flex-col items-center"
       >
-        <p className="max-w-2xl font-display text-2xl font-medium text-text-muted md:text-3xl">
-          <LineReveal delay={0.2}>You don&rsquo;t become an engineer by watching code.</LineReveal>
-        </p>
-        <p className="mt-3 max-w-2xl font-display text-3xl font-medium text-text md:text-4xl">
-          <LineReveal delay={1.1}>You become one by building.</LineReveal>
-        </p>
-
         <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.8, delay: 1.9 }}
-          className="mt-14 flex items-center gap-3 font-mono text-xs uppercase tracking-widest text-text-faint md:text-sm"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: motionTokens.durations.cinematic, delay: 0.1, ease: motionTokens.easing.cinematic }}
         >
-          {["READ", "THINK", "CODE", "BREAK", "DEBUG", "BUILD"].map((step, i, arr) => (
-            <span key={step} className="flex items-center gap-3">
-              {step}
-              {i < arr.length - 1 && <ArrowRight className="h-3 w-3 text-ember/60" />}
-            </span>
-          ))}
+          <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-ember">
+            The Engineering Lab
+          </p>
         </motion.div>
 
+        <p className="mt-5 max-w-2xl text-balance font-display text-3xl font-medium leading-tight text-text md:text-5xl">
+          <LineReveal delay={0.35}>Stop watching tutorials.</LineReveal>{" "}
+          <LineReveal delay={0.75}>Start building like an engineer.</LineReveal>
+        </p>
+
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: motionTokens.durations.cinematic, delay: 2.3, ease: motionTokens.easing.cinematic }}
-          className="mt-10"
+          transition={{ duration: 0.6, delay: 1.25 }}
         >
-          <h1 className="font-display text-6xl font-semibold tracking-[0.15em] text-text md:text-8xl">
+          <h1 className="mt-8 font-display text-4xl font-semibold tracking-[0.15em] text-text md:text-6xl">
             FORGE
           </h1>
-          <p className="mt-4 text-base text-text-muted">
-            The interactive engineering lab for Python, JavaScript and Java developers.
+          <p className="mt-3 max-w-md text-sm text-text-muted md:text-base">
+            Learn concepts, write code, debug real failures — for Python,
+            JavaScript, and Java.
           </p>
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 2.7 }}
-          className="mt-10 flex items-center gap-4"
+          transition={{ duration: 0.6, delay: 1.55 }}
+          className="mt-9 flex items-center gap-4"
         >
           <Link href="/signup" data-cursor="ENTER">
             <MagneticButton>Enter the Lab</MagneticButton>
@@ -133,6 +149,80 @@ function Hero() {
         </motion.div>
       </motion.a>
     </section>
+  );
+}
+
+function ProductionTeaser() {
+  const [stage, setStage] = useState<"idle" | "under-pressure" | "fixed">("idle");
+
+  return (
+    <div className="mt-10">
+      <Stagger className="flex flex-wrap items-center justify-center gap-4 font-mono text-sm text-text-muted">
+        {["10 users", "1,000 users", "100,000 users"].map((label, i, arr) => (
+          <StaggerItem key={label} className="flex items-center gap-4">
+            <>
+              {label}
+              {i < arr.length - 1 && <ArrowRight className="h-3 w-3 text-ember/60" />}
+            </>
+          </StaggerItem>
+        ))}
+        <StaggerItem>
+          <span className={cn("flex items-center gap-4", stage !== "fixed" && "text-signal-fail")}>
+            <ArrowRight className="h-3 w-3 text-ember/60" />
+            {stage === "fixed" ? "Stable under load" : "System under pressure"}
+          </span>
+        </StaggerItem>
+      </Stagger>
+
+      <div className="mx-auto mt-8 max-w-md">
+        {stage === "idle" && (
+          <Reveal delay={0.2}>
+            <p className="text-center text-sm text-text-faint">
+              Latency climbs. Something breaks. What would you change?
+            </p>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <button
+                onClick={() => setStage("under-pressure")}
+                className="rounded-md border border-hairline px-4 py-2 text-sm text-text-muted hover:border-ember hover:text-text"
+              >
+                Simulate the spike
+              </button>
+            </div>
+          </Reveal>
+        )}
+        {stage === "under-pressure" && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <p className="text-center text-sm text-signal-fail">
+              Database connections exhausted. Pick a fix:
+            </p>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">
+              <button
+                onClick={() => setStage("fixed")}
+                className="rounded-md border border-ember/40 bg-ember/[0.06] px-4 py-2 text-sm text-text hover:bg-ember/[0.1]"
+              >
+                Add a cache
+              </button>
+              <button
+                onClick={() => setStage("fixed")}
+                className="rounded-md border border-hairline px-4 py-2 text-sm text-text-muted hover:border-text-faint"
+              >
+                Just add a bigger database
+              </button>
+            </div>
+          </motion.div>
+        )}
+        {stage === "fixed" && (
+          <motion.p
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center text-sm text-signal-pass"
+          >
+            That&rsquo;s the kind of call you&rsquo;ll make in the real Production Lab — with real
+            metrics and real trade-offs, not just this teaser.
+          </motion.p>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -230,7 +320,11 @@ export default function LandingPage() {
                     className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-30"
                     style={{ background: track.glow }}
                   />
-                  <p className="font-display text-2xl text-text">{track.name}</p>
+                  <p className="font-mono text-[10px] uppercase tracking-widest text-text-faint">
+                    {track.focus}
+                  </p>
+                  <p className="mt-2 font-display text-2xl text-text">{track.name}</p>
+                  <p className="mt-2 text-sm text-text-muted">{track.blurb}</p>
                   <div className="mt-4 flex flex-col gap-1.5">
                     {track.stack.map((tech, ti) => (
                       <motion.p
@@ -245,8 +339,38 @@ export default function LandingPage() {
                       </motion.p>
                     ))}
                   </div>
+                  <p className="mt-5 flex items-center gap-1.5 text-sm text-ember">
+                    Explore {track.name}
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" />
+                  </p>
                 </TiltCard>
               </Link>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* Section 5.5 — From consumption to capability */}
+      <section className="mx-auto max-w-3xl px-6 py-28">
+        <Reveal>
+          <p className="text-center font-mono text-xs uppercase tracking-widest text-ember">
+            What FORGE actually builds
+          </p>
+        </Reveal>
+        <div className="mt-10 space-y-6">
+          {[
+            { from: "\u201CI understand Redis.\u201D", to: "I built a Redis-backed rate limiter." },
+            { from: "\u201CI know APIs.\u201D", to: "I debugged a failing production API." },
+            { from: "\u201CI studied system design.\u201D", to: "I designed a scalable architecture." },
+          ].map((row, i) => (
+            <Reveal key={row.from} delay={i * 0.1}>
+              <div className="flex flex-col items-center justify-center gap-3 rounded-md border border-hairline bg-surface px-6 py-5 text-center sm:flex-row sm:justify-between sm:text-left">
+                <p className="text-sm text-text-faint line-through decoration-text-faint/50">
+                  {row.from}
+                </p>
+                <ArrowRight className="h-4 w-4 shrink-0 rotate-90 text-ember sm:rotate-0" />
+                <p className="font-display text-base text-text">{row.to}</p>
+              </div>
             </Reveal>
           ))}
         </div>
@@ -293,26 +417,7 @@ export default function LandingPage() {
         <Reveal>
           <p className="font-mono text-xs uppercase tracking-widest text-ember">Production</p>
         </Reveal>
-        <Stagger className="mt-10 flex flex-wrap items-center justify-center gap-4 font-mono text-sm text-text-muted">
-          {["10 users", "1,000 users", "100,000 users"].map((label, i, arr) => (
-            <StaggerItem key={label} className="flex items-center gap-4">
-              <>
-                {label}
-                {i < arr.length - 1 && <ArrowRight className="h-3 w-3 text-ember/60" />}
-              </>
-            </StaggerItem>
-          ))}
-          <StaggerItem>
-            <span className="flex items-center gap-4 text-signal-fail">
-              <ArrowRight className="h-3 w-3 text-ember/60" /> System under pressure
-            </span>
-          </StaggerItem>
-        </Stagger>
-        <Reveal delay={0.3}>
-          <p className="mt-6 text-sm text-text-faint">
-            Latency climbs. Something breaks. You find out what — and fix it.
-          </p>
-        </Reveal>
+        <ProductionTeaser />
       </section>
 
       {/* Final CTA */}

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { LoadingState } from "@/components/motion/loading-state";
+import { ErrorState } from "@/components/motion/error-state";
 import { projectsApi, type ProjectSummary } from "@/lib/api";
 
 const DIFFICULTY_TONE: Record<string, "pass" | "warn" | "fail"> = {
@@ -16,12 +17,20 @@ const DIFFICULTY_TONE: Record<string, "pass" | "warn" | "fail"> = {
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+
+  function load() {
+    setLoading(true);
+    setLoadError(false);
+    projectsApi.list().then(setProjects).catch(() => setLoadError(true)).finally(() => setLoading(false));
+  }
 
   useEffect(() => {
-    projectsApi.list().then(setProjects).finally(() => setLoading(false));
+    load();
   }, []);
 
   if (loading) return <LoadingState context="project" />;
+  if (loadError) return <ErrorState message="Couldn't load projects." onRetry={load} />;
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -30,6 +39,9 @@ export default function ProjectsPage() {
         Real engineering assignments
       </h1>
 
+      {projects.length === 0 ? (
+        <p className="mt-6 text-sm text-text-faint">No projects available yet — check back soon.</p>
+      ) : (
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         {projects.map((p) => (
           <Link key={p.id} href={`/projects/${p.id}`}>
@@ -58,6 +70,7 @@ export default function ProjectsPage() {
           </Link>
         ))}
       </div>
+      )}
     </div>
   );
 }

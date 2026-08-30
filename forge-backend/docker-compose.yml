@@ -25,5 +25,27 @@ services:
       timeout: 5s
       retries: 5
 
+  # Local-dev-only worker. This container mounts the host's Docker socket so
+  # it can spin up sandbox containers on your own machine — that mount is
+  # exactly what you do NOT have available on Render, which is the whole
+  # reason sandbox_image/BUILD.md exists. This service is for testing the
+  # execution pipeline locally before you set up a real remote Docker host.
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      DATABASE_URL: postgresql+psycopg2://forge:forge@postgres:5432/forge
+      REDIS_URL: redis://redis:6379/0
+      SANDBOX_ENABLED: "true"
+      SECRET_KEY: dev-only-not-for-production
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
 volumes:
   forge_postgres_data:

@@ -1,73 +1,100 @@
 """
-Execution boundary for learner submissions.
+Execution boundary for learner submissions — the single place that decides
+whether a submission gets real sandboxed execution or the dev-mode
+heuristic fallback, and the only module downstream code should import from.
 
-⚠️  READ BEFORE TOUCHING THIS FILE.
+Real execution (Docker, resource-limited, network-isolated) lives in
+`runners/python_runner.py` and requires:
+1. `settings.sandbox_enabled = True`
+2. A reachable Docker daemon (`docker_client.py`) — see
+   `sandbox_image/BUILD.md` for why this generally can't just be "the same
+   machine the API runs on" in production.
+3. The challenge itself has `test_harness_code` set — a challenge with only
+   the old heuristic-style TestCase.expected_output_json (`{"contains": [...]}`)
+   can't be really executed, since that format was never anything but a
+   substring check.
 
-This module intentionally does NOT execute submitted code. Real sandboxed
-execution (ephemeral Docker containers, no network, resource limits, a
-worker process with no access to app secrets) is Phase 5 work — see
-forge-architecture-plan.md §7 for the full design. Building that safely
-needs real infrastructure (a container runtime, a queue, a worker fleet)
-that doesn't exist in this repo yet, and faking "it's sandboxed" here would
-be actively dangerous if this code ever ran anywhere near production.
-
-So instead: `grade_submission_dev_only()` below never runs the learner's
-code. It does simple, transparent heuristic checks against the submitted
-source text (does it contain a `try/except`, does it call the expected
-function, etc.) purely so the rest of the product — the challenge page,
-the results page, mastery updates — has something real to react to during
-Phase 1-4 development. It is loud about what it is in its own return
-payload and refuses to run at all if `settings.sandbox_enabled` is set,
-so nobody mistakes it for the real thing in a deployed environment.
-
-When Phase 5 arrives, replace the body of `grade_submission_dev_only`
-with a call to `enqueue_execution_job()` (stubbed below) and implement
-the actual worker per the architecture plan. Don't patch this file to
-"just run `exec()`" as a shortcut — that is exactly the vulnerability
-§14/§39 exist to prevent.
+If any of those aren't true, this falls back to the heuristic grader rather
+than erroring, so the product keeps working while you're still setting the
+sandbox up (see sandbox_image/BUILD.md).
 """
 
 import time
 
 from app.core.config import get_settings
+from app.db.models_challenges import Challenge, TestCase
+from app.submissions.runners.python_runner import PythonRunner
 
 settings = get_settings()
 
 
-class SandboxNotConfiguredError(RuntimeError):
-    pass
+def grade_submission(challenge: Challenge, files: dict[str, str], test_cases: list[TestCase]) -> dict:
+    if settings.sandbox_enabled and challenge.test_harness_code:
+        return _grade_real(challenge, files)
+    return _grade_heuristic(files, test_cases)
 
 
-def grade_submission_dev_only(
-    files: dict[str, str], test_case_hints: list[dict]
-) -> dict:
+def _grade_real(challenge: Challenge, files: dict[str, str]) -> dict:
+    runner = PythonRunner()
+
+    syntax_issues = runner.validate(files)
+    if syntax_issues:
+        return {
+            "mode": "sandboxed_execution",
+            "results": [
+                {"name": "Syntax check", "passed": False, "duration_ms": 0, "message": i.message, "hidden": False}
+                for i in syntax_issues
+            ],
+            "tests_passed": 0,
+            "tests_total": len(syntax_issues),
+            "duration_ms": 0,
+        }
+
+    result = runner.run(files, challenge.test_harness_code)
+
+    per_test_ms = result.duration_ms // max(len(result.tests), 1)
+    results = [
+        {
+            "name": t.name,
+            "passed": t.passed,
+            "duration_ms": per_test_ms,
+            "message": t.message,
+            "hidden": t.hidden,
+        }
+        for t in result.tests
+    ]
+
+    return {
+        "mode": "sandboxed_execution",
+        "results": results,
+        "tests_passed": sum(1 for r in results if r["passed"]),
+        "tests_total": len(results),
+        "duration_ms": result.duration_ms,
+        "stdout": result.stdout[-4000:],  # cap stored output size
+        "stderr": result.stderr[-4000:],
+    }
+
+
+def _grade_heuristic(files: dict[str, str], test_cases: list[TestCase]) -> dict:
     """
-    Heuristic, non-executing grading for local development only.
-
-    `test_case_hints` is a list of {"name": str, "check": str} where `check`
-    is a substring (or small set of substrings, any-match) the source must
-    contain for that test to be considered "passed". This is deliberately
-    dumb — it is not a replacement for running tests, only a stand-in so the
-    UI has real submission data to render while the real sandbox is built.
+    Non-executing fallback — see this module's docstring for when it's used.
+    Never claims to have run anything; `mode` in the return payload always
+    says exactly what happened.
     """
-    if settings.sandbox_enabled:
-        raise SandboxNotConfiguredError(
-            "sandbox_enabled=True but no real execution backend is wired up. "
-            "Implement enqueue_execution_job() before enabling this flag."
-        )
-
     combined_source = "\n".join(files.values())
     results = []
-    for case in test_case_hints:
-        checks = case["check"] if isinstance(case["check"], list) else [case["check"]]
-        passed = any(c in combined_source for c in checks)
+    for tc in test_cases:
+        checks = (tc.expected_output_json or {}).get("contains", [])
+        if isinstance(checks, str):
+            checks = [checks]
+        passed = bool(checks) and any(c in combined_source for c in checks)
         results.append(
             {
-                "name": case["name"],
+                "name": tc.name,
                 "passed": passed,
                 "duration_ms": int(5 + 15 * time.time() % 1),
-                "message": None if passed else f"Expected source to contain one of: {checks}",
-                "hidden": case.get("hidden", False),
+                "message": None if passed else f"Expected source to contain one of: {checks}" if checks else "No heuristic check configured for this test",
+                "hidden": tc.is_hidden,
             }
         )
     return {
@@ -75,17 +102,5 @@ def grade_submission_dev_only(
         "results": results,
         "tests_passed": sum(1 for r in results if r["passed"]),
         "tests_total": len(results),
+        "duration_ms": sum(r["duration_ms"] for r in results),
     }
-
-
-def enqueue_execution_job(submission_id: str, files: dict[str, str]) -> None:
-    """
-    Real entrypoint for Phase 5. Should push a job onto the queue (Redis
-    Streams / Celery — see architecture plan §7.2) for a worker to pick up,
-    run inside an ephemeral, network-isolated, resource-limited container,
-    and write a structured result back. Not implemented here on purpose.
-    """
-    raise NotImplementedError(
-        "Real sandboxed execution isn't implemented yet — see this file's "
-        "module docstring and forge-architecture-plan.md §7."
-    )

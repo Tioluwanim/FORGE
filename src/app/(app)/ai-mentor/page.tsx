@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Send, MessageSquareCode } from "lucide-react";
 import { ThinkingIndicator } from "@/components/motion/loading-state";
@@ -14,10 +15,19 @@ interface ChatMessage {
 }
 
 export default function AiMentorPage() {
+  const searchParams = useSearchParams();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Deep-linked from a failed practice question or debug diagnosis —
+    // the question text is prefilled, not auto-sent, so the learner still
+    // decides when to actually ask it.
+    const prefill = searchParams.get("prefill");
+    if (prefill) setInput(prefill);
+  }, [searchParams]);
 
   async function send() {
     if (!input.trim()) return;

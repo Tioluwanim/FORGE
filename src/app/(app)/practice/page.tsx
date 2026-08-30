@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +11,8 @@ import { useAuth } from "@/lib/use-auth";
 
 export default function PracticePage() {
   const { loading: authLoading } = useAuth();
+  const searchParams = useSearchParams();
+  const requestedConcept = searchParams.get("concept");
   const [questions, setQuestions] = useState<QuestionOut[]>([]);
   const [conceptTitle, setConceptTitle] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -28,13 +31,28 @@ export default function PracticePage() {
       try {
         const concepts = await curriculumApi.concepts();
         if (concepts.length === 0) {
-          setLoadError("No concepts seeded yet — run the backend seed script.");
+          setLoadError("No practice content is available yet — check back soon.");
           return;
         }
 
-        // Try each concept in order until one has questions attached —
-        // real prioritization (weakest concept first) is a natural upgrade
-        // once /dashboard's weak_areas exposes concept ids too.
+        // Deep-linked from the roadmap or dashboard ("Continue" on a
+        // specific concept) — go straight to that concept's questions
+        // instead of the generic first-available scan below.
+        if (requestedConcept) {
+          const requested = concepts.find((c) => c.id === requestedConcept);
+          if (requested) {
+            const qs = await questionsApi.byConcept(requested.id);
+            if (qs.length > 0) {
+              setQuestions(qs);
+              setConceptTitle(requested.title);
+              return;
+            }
+          }
+        }
+
+        // Otherwise try each concept in order until one has questions
+        // attached — real prioritization (weakest concept first) is a
+        // natural upgrade once /dashboard's weak_areas exposes concept ids.
         for (const c of concepts) {
           const qs = await questionsApi.byConcept(c.id);
           if (qs.length > 0) {
@@ -51,7 +69,7 @@ export default function PracticePage() {
       }
     }
     load();
-  }, [authLoading]);
+  }, [authLoading, requestedConcept]);
 
   const q = questions[index];
 
@@ -84,7 +102,7 @@ export default function PracticePage() {
         <p className="font-mono text-xs uppercase tracking-widest text-ember">Practice</p>
         <p className="mt-4 text-sm text-text-faint">
           {loadError ??
-            `No questions are attached to "${conceptTitle}" yet in the seed data — add some via the questions table, or extend the seed script.`}
+            `No practice questions for "${conceptTitle}" yet — check back soon.`}
         </p>
       </div>
     );
@@ -148,6 +166,16 @@ export default function PracticePage() {
             <Badge tone={correct === null ? "info" : correct ? "pass" : "fail"}>
               {correct === null ? "Submitted for review" : correct ? "Correct" : "Not quite"}
             </Badge>
+            {correct === false && (
+              <a
+                href={`/ai-mentor?prefill=${encodeURIComponent(
+                  `I got this wrong: "${q.prompt_md}" — can you help me understand why?`
+                )}`}
+                className="text-sm text-ember hover:underline"
+              >
+                Ask mentor
+              </a>
+            )}
             <Button variant="primary" onClick={next} disabled={index === questions.length - 1}>
               Next question →
             </Button>

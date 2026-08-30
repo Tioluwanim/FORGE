@@ -36,6 +36,11 @@ class Challenge(Base):
     memory_limit_mb: Mapped[int] = mapped_column(Integer, default=256)
     difficulty_score: Mapped[float] = mapped_column(Numeric(4, 2), default=1.0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Author-written test code, executed inside the sandbox against the
+    # learner's submission — see runners/python_runner.py's HARNESS_TEMPLATE
+    # for the exact contract (must define `run_tests(solution) -> list[dict]`).
+    # Never sent to the client; only TestCase names/hidden-flags are.
+    test_harness_code: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     files: Mapped[list["ChallengeFile"]] = relationship(back_populates="challenge", cascade="all, delete-orphan")
     test_cases: Mapped[list["TestCase"]] = relationship(back_populates="challenge", cascade="all, delete-orphan")
@@ -88,7 +93,12 @@ class Submission(Base):
     challenge_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("challenges.id"))
     track_id: Mapped[str] = mapped_column(UUID(as_uuid=False), ForeignKey("tracks.id"))
     status: Mapped[SubmissionStatus] = mapped_column(default=SubmissionStatus.queued)
-    submitted_code_ref: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Stores the submitted {path: content} dict as JSON. The architecture
+    # plan's original design (§4.3) calls for this to be an object-storage
+    # pointer instead of inline text — worth migrating to S3/R2 once
+    # submission volume makes it worthwhile, but Text is fine at current
+    # scale and avoids standing up object storage just for this.
+    submitted_code_ref: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

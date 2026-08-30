@@ -1,31 +1,20 @@
-# Core API
-fastapi==0.141.1
-uvicorn[standard]==0.35.0
-
-# Database
-sqlalchemy==2.0.43
-alembic==1.16.4
-psycopg[binary]>=3.2,<4
-
-# Validation / Settings
-pydantic==2.12.5
-pydantic-settings==2.10.1
-email-validator==2.3.0
-
-# Authentication
-python-jose[cryptography]==3.5.0
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+sqlalchemy==2.0.36
+alembic==1.14.0
+psycopg2-binary==2.9.10
+pydantic==2.10.4
+pydantic-settings==2.7.0
+python-jose[cryptography]==3.3.0
 passlib[argon2]==1.7.4
 python-multipart==0.0.20
-
-# Infrastructure
-redis==6.4.0
-celery==5.5.3
-
-# HTTP / AI APIs
+redis==5.2.1
+rq==2.1.0
+docker==7.1.0
 httpx==0.28.1
 
-# Dev / Test
-pytest==8.4.1
-pytest-asyncio==1.1.0
-ruff==0.12.10
-mypy==1.17.1
+# dev / test
+pytest==8.3.4
+pytest-asyncio==0.25.0
+ruff==0.8.4
+mypy==1.14.0

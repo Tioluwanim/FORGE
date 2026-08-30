@@ -26,3 +26,4 @@ class SubmissionResultResponse(BaseModel):
     tests_total: int
     duration_ms: int
     results: list[TestCaseResult]
+    mode: str | None = None  # "sandboxed_execution" | "dev_heuristic_no_execution" — shown in dev tooling, not hidden from the client

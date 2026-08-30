@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { notFound, useRouter } from "next/navigation";
 import { use } from "react";
-import { ExternalLink, Clock, Check } from "lucide-react";
+import { ExternalLink, Clock, Check, MessageSquareCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/motion/loading-state";
+import { ErrorState } from "@/components/motion/error-state";
 import { curriculumApi, type ConceptDetail } from "@/lib/api";
 import { ApiError } from "@/lib/api-client";
 
@@ -17,29 +18,49 @@ export default function ConceptPage({
   const { concept: slug } = use(params);
   const [concept, setConcept] = useState<ConceptDetail | null>(null);
   const [notFoundFlag, setNotFoundFlag] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [understood, setUnderstood] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
+  function load() {
+    setLoadError(false);
     curriculumApi
       .concept(slug)
       .then(setConcept)
       .catch((err) => {
         if (err instanceof ApiError && err.status === 404) setNotFoundFlag(true);
+        else setLoadError(true);
       });
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
   if (notFoundFlag) notFound();
+  if (loadError) return <ErrorState message="Couldn't load this concept." onRetry={load} />;
   if (!concept) return <LoadingState context="documentation" />;
 
   return (
     <div className="mx-auto max-w-2xl">
-      <p className="font-mono text-xs uppercase tracking-widest text-ember">
-        {concept.module}
-      </p>
-      <h1 className="mt-1 font-display text-2xl font-medium text-text">
-        {concept.title}
-      </h1>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="font-mono text-xs uppercase tracking-widest text-ember">
+            {concept.module}
+          </p>
+          <h1 className="mt-1 font-display text-2xl font-medium text-text">
+            {concept.title}
+          </h1>
+        </div>
+        <a
+          href={`/ai-mentor?prefill=${encodeURIComponent(`Can you help me understand ${concept.title}?`)}`}
+          className="mt-1 flex shrink-0 items-center gap-1.5 whitespace-nowrap text-xs text-text-faint hover:text-ember"
+        >
+          <MessageSquareCode className="h-3.5 w-3.5" />
+          Ask mentor
+        </a>
+      </div>
 
       {concept.doc_url && (
         <a
@@ -100,7 +121,7 @@ export default function ConceptPage({
           )}
         </Button>
         {understood && (
-          <Button variant="primary" onClick={() => router.push("/practice")}>
+          <Button variant="primary" onClick={() => router.push(`/practice?concept=${encodeURIComponent(concept.id)}`)}>
             Take knowledge check →
           </Button>
         )}

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { LoadingState } from "@/components/motion/loading-state";
+import { ErrorState } from "@/components/motion/error-state";
+import { useToast } from "@/components/ui/toast";
 import { usersApi, type ProfileResponse } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 
@@ -17,21 +19,31 @@ const GOALS = [
 
 export default function SettingsProfilePage() {
   const { loading: authLoading } = useAuth();
+  const toast = useToast();
   const [profile, setProfile] = useState<ProfileResponse | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [goal, setGoal] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  function load() {
+    setLoadError(false);
+    usersApi
+      .getProfile()
+      .then((p) => {
+        setProfile(p);
+        setDisplayName(p.display_name);
+        setBio(p.bio ?? "");
+        setGoal(p.goal ?? "backend");
+      })
+      .catch(() => setLoadError(true));
+  }
 
   useEffect(() => {
     if (authLoading) return;
-    usersApi.getProfile().then((p) => {
-      setProfile(p);
-      setDisplayName(p.display_name);
-      setBio(p.bio ?? "");
-      setGoal(p.goal ?? "backend");
-    });
+    load();
   }, [authLoading]);
 
   async function save() {
@@ -41,12 +53,17 @@ export default function SettingsProfilePage() {
       const updated = await usersApi.updateProfile({ display_name: displayName, bio, goal });
       setProfile(updated);
       setSaved(true);
+    } catch {
+      toast("Couldn't save your profile — try again.", "error");
     } finally {
       setSaving(false);
     }
   }
 
-  if (!profile || authLoading) return <LoadingState context="default" />;
+  if (!profile || authLoading) {
+    if (loadError) return <ErrorState message="Couldn't load your profile." onRetry={load} />;
+    return <LoadingState context="default" />;
+  }
 
   return (
     <div className="space-y-5">

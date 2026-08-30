@@ -1,0 +1,63 @@
+services:
+  - type: web
+    name: forge-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: forge-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: forge-redis
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SANDBOX_ENABLED
+        value: "false" # flip to true once DOCKER_HOST is configured — see app/submissions/sandbox_image/BUILD.md
+      - key: GROQ_API_KEY
+        sync: false
+
+  # Runs the submission queue consumer. Only needs Docker access if
+  # SANDBOX_ENABLED=true — see app/submissions/sandbox_image/BUILD.md for
+  # why that means DOCKER_HOST pointing at a real Docker-capable host,
+  # not this service itself.
+  - type: worker
+    name: forge-worker
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.submissions.worker
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: forge-postgres
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: forge-redis
+          property: connectionString
+      - key: SECRET_KEY
+        sync: false # must match forge-api's SECRET_KEY
+      - key: SANDBOX_ENABLED
+        value: "false"
+      - key: DOCKER_HOST
+        sync: false
+      - key: DOCKER_TLS_CERT_PATH
+        sync: false
+      - key: DOCKER_TLS_KEY_PATH
+        sync: false
+      - key: DOCKER_TLS_CA_PATH
+        sync: false
+
+  - type: redis
+    name: forge-redis
+    plan: starter
+    ipAllowList: []
+
+databases:
+  - name: forge-postgres
+    plan: starter

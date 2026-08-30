@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { LoadingState } from "@/components/motion/loading-state";
+import { ErrorState } from "@/components/motion/error-state";
+import { useToast } from "@/components/ui/toast";
 import { usersApi, type PreferencesResponse } from "@/lib/api";
 import { useAuth } from "@/lib/use-auth";
 
@@ -36,27 +38,41 @@ function Toggle({
 
 export default function SettingsPreferencesPage() {
   const { loading: authLoading } = useAuth();
+  const toast = useToast();
   const [prefs, setPrefs] = useState<PreferencesResponse | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
+
+  function load() {
+    setLoadError(false);
+    usersApi.getPreferences().then(setPrefs).catch(() => setLoadError(true));
+  }
 
   useEffect(() => {
     if (authLoading) return;
-    usersApi.getPreferences().then(setPrefs);
+    load();
   }, [authLoading]);
 
   async function update(key: keyof PreferencesResponse, value: boolean) {
     if (!prefs) return;
+    const previous = prefs;
     setPrefs({ ...prefs, [key]: value }); // optimistic
     setSaving(key);
     try {
       const updated = await usersApi.updatePreferences({ [key]: value });
       setPrefs(updated);
+    } catch {
+      setPrefs(previous); // roll back the optimistic update
+      toast("Couldn't save that preference — try again.", "error");
     } finally {
       setSaving(null);
     }
   }
 
-  if (!prefs || authLoading) return <LoadingState context="default" />;
+  if (!prefs || authLoading) {
+    if (loadError) return <ErrorState message="Couldn't load your preferences." onRetry={load} />;
+    return <LoadingState context="default" />;
+  }
 
   const rows: { key: keyof PreferencesResponse; label: string; description: string }[] = [
     {
