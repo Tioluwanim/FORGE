@@ -21,10 +21,11 @@ body {
   color: theme("colors.text.DEFAULT");
   font-family: var(--font-body);
   background-image:
+    radial-gradient(circle at top, rgba(255, 106, 57, 0.14), transparent 32%),
     linear-gradient(#ffffff08 1px, transparent 1px),
     linear-gradient(90deg, #ffffff08 1px, transparent 1px);
-  background-size: 40px 40px;
-  background-position: center;
+  background-size: auto, 40px 40px, 40px 40px;
+  background-position: center, center, center;
 }
 
 /* Visible keyboard focus everywhere — never sacrificed for cinematic effects */

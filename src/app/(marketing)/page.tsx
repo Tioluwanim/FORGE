@@ -9,7 +9,7 @@ import { Reveal, Stagger, StaggerItem } from "@/components/motion/reveal";
 import { LineReveal } from "@/components/motion/text-reveal";
 import { MagneticButton } from "@/components/motion/magnetic-button";
 import { TiltCard } from "@/components/motion/tilt-card";
-import { GlowField, ParticleField, GridBackground } from "@/components/motion/backgrounds";
+import { GlowField, ParticleField, GridBackground, NoiseOverlay } from "@/components/motion/backgrounds";
 import { ScrollStory } from "@/components/motion/scroll-story";
 import { ArchitectureDiagram } from "@/components/motion/architecture-diagram";
 import { InteractiveShowcase } from "@/components/marketing/interactive-showcase";
@@ -69,63 +69,72 @@ function Hero() {
   return (
     <section
       onPointerMove={handlePointerMove}
-      className="relative flex min-h-[90vh] flex-col items-center justify-center overflow-hidden px-6 text-center"
+      className="relative flex min-h-[94vh] flex-col items-center justify-center overflow-hidden px-6 pb-20 pt-16 text-center"
     >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,106,57,0.2),transparent_28%),radial-gradient(circle_at_50%_72%,rgba(255,106,57,0.08),transparent_42%)]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#0B0D10]/10 via-transparent to-[#0B0D10]" />
       <GridBackground />
       <GlowField />
-      <ParticleField count={14} />
+      <ParticleField count={18} />
+      <NoiseOverlay opacity={0.06} />
       {!reduceMotion && (
-        <div className="absolute inset-0">
+        <div className="absolute inset-0 opacity-80">
           <HeroScene />
         </div>
       )}
+      <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#0A0C0E] via-[#0A0C0E]/40 to-transparent" />
 
       <motion.div
         style={reduceMotion ? undefined : { x: px, y: py }}
-        className="relative flex flex-col items-center"
+        className="relative z-10 flex flex-col items-center"
+        initial={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: motionTokens.durations.cinematic, ease: motionTokens.easing.cinematic }}
       >
         <motion.div
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 18 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: motionTokens.durations.cinematic, delay: 0.1, ease: motionTokens.easing.cinematic }}
+          transition={{ duration: motionTokens.durations.cinematic, delay: 0.15, ease: motionTokens.easing.cinematic }}
         >
-          <p className="font-mono text-[11px] uppercase tracking-[0.3em] text-ember">
+          <p className="font-mono text-[11px] uppercase tracking-[0.38em] text-ember/90">
             The Engineering Lab
           </p>
         </motion.div>
 
-        <p className="mt-5 max-w-2xl text-balance font-display text-3xl font-medium leading-tight text-text md:text-5xl">
+        <p className="mt-6 max-w-5xl text-balance font-display text-[clamp(3rem,7vw,7rem)] font-medium leading-[0.88] tracking-[-0.06em] text-text drop-shadow-[0_0_28px_rgba(255,106,57,0.12)]">
           <LineReveal delay={0.35}>Stop watching tutorials.</LineReveal>{" "}
-          <LineReveal delay={0.75}>Start building like an engineer.</LineReveal>
+          <LineReveal delay={0.8}>Start building like an engineer.</LineReveal>
         </p>
 
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1.25 }}
+          transition={{ duration: 0.8, delay: 1.6, ease: motionTokens.easing.cinematic }}
         >
-          <h1 className="mt-8 font-display text-4xl font-semibold tracking-[0.15em] text-text md:text-6xl">
+          <h1 className="mt-8 font-display text-4xl font-semibold tracking-[0.22em] text-text md:text-6xl">
             FORGE
           </h1>
-          <p className="mt-3 max-w-md text-sm text-text-muted md:text-base">
+          <p className="mt-4 max-w-xl text-sm text-text-muted md:text-base">
             Learn concepts, write code, debug real failures — for Python,
             JavaScript, and Java.
           </p>
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 1.55 }}
-          className="mt-9 flex items-center gap-4"
+          transition={{ duration: 0.8, delay: 2, ease: motionTokens.easing.cinematic }}
+          className="mt-10 flex flex-col items-center gap-4 sm:flex-row"
         >
           <Link href="/signup" data-cursor="ENTER">
-            <MagneticButton>Enter the Lab</MagneticButton>
+            <MagneticButton className="rounded-full border border-ember/50 bg-ember/10 px-7 py-3.5 text-sm font-medium text-text shadow-[0_0_30px_rgba(255,106,57,0.18)] backdrop-blur-sm transition-all duration-300 hover:bg-ember/15">
+              Enter the Lab
+            </MagneticButton>
           </Link>
           <a
             href="#try-it"
             data-cursor="TRY IT"
-            className="flex items-center gap-2 rounded-md border border-hairline px-6 py-3 text-sm text-text-muted hover:border-text-faint hover:text-text"
+            className="flex items-center gap-2 rounded-full border border-hairline bg-surface/30 px-6 py-3.5 text-sm text-text-muted backdrop-blur-sm transition-all duration-300 hover:border-text-faint hover:bg-surface/60 hover:text-text"
           >
             Try it — no signup
             <ArrowDown className="h-3.5 w-3.5" />
@@ -137,12 +146,12 @@ function Hero() {
         href="#try-it"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 0.6, delay: 3.4 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 text-text-faint hover:text-text-muted"
+        transition={{ duration: 0.8, delay: 3.5, ease: motionTokens.easing.cinematic }}
+        className="absolute bottom-8 left-1/2 z-10 -translate-x-1/2 text-text-faint hover:text-text-muted"
         aria-label="Scroll to interactive demo"
       >
         <motion.div
-          animate={{ y: [0, 6, 0] }}
+          animate={{ y: [0, 8, 0] }}
           transition={{ duration: 1.8, repeat: Infinity, ease: "easeInOut" }}
         >
           <ArrowDown className="h-4 w-4" />
